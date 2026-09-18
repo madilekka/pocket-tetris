@@ -82,7 +82,11 @@
                 <button type="button" class="mbtn" data-row="1" data-dir="1" aria-label="Уровень выше">&gt;</button>
               </div>
             </div>
-            <div class="small blink">PRESS START</div>
+            <div class="menu" id="pauseMenu" hidden>
+              <button type="button" class="mrow mitem" id="resumeBtn">CONTINUE</button>
+              <button type="button" class="mrow mitem" id="quitBtn">QUIT TO MENU</button>
+            </div>
+            <div class="small blink" id="overlayPrompt">PRESS START</div>
             <div class="stats" id="overlayStats"></div>
           </div>
         </div>

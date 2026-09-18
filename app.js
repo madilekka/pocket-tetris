@@ -11,6 +11,7 @@
   var timePanel=$('timePanel'), timeVal=$('timeVal'), lvBar=$('lvBar'), lvLeft=$('lvLeft');
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel')];
+  var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -499,11 +500,13 @@
   });
 
   /* ---------------- game flow ---------------- */
-  function showOverlay(title,sub,stats,withMenu){
+  function showOverlay(title,sub,stats,kind){
     overlayTitle.textContent=title;
     overlaySub.textContent=sub||'';
     overlayStats.textContent=stats||'';
-    menuEl.hidden=!withMenu;
+    menuEl.hidden = kind!=='main';
+    pauseMenuEl.hidden = kind!=='pause';
+    overlayPrompt.hidden = kind!=='main';
     overlay.hidden=false;
   }
   function hideOverlay(){ overlay.hidden=true; }
@@ -554,7 +557,7 @@
     updateHud();
     draw();
     powerLed.style.opacity='.35';
-    showOverlay(title, (record ? 'NEW RECORD' + (sub ? '\n' : '') : '') + sub, statsLine(), true);
+    showOverlay(title, (record ? 'NEW RECORD' + (sub ? '\n' : '') : '') + sub, statsLine(), 'main');
   }
 
   function togglePause(){
@@ -563,13 +566,50 @@
       stopTune();
       stopAllRepeats();
       gesture=null;
-      showOverlay('PAUSE','',statsLine(),false);
+      pauseRow=0;
+      renderPauseMenu();
+      showOverlay('PAUSE','',statsLine(),'pause');
     } else if(gameState==='paused'){
       gameState='playing';
       hideOverlay();
       scheduleTune();
     }
   }
+
+  /* ---------------- pause menu: continue or quit ---------------- */
+  var pauseRow=0;
+  function renderPauseMenu(){
+    resumeBtn.classList.toggle('focus', pauseRow===0);
+    quitBtn.classList.toggle('focus', pauseRow===1);
+  }
+
+  function quitToMenu(){
+    if(gameState!=='paused') return;
+    if(mode==='marathon' && score>best.marathon){ best.marathon=score; saveBest(); }
+    gameState='ready';
+    resetBoard();
+    piece=null; nextKey=null; heldKey=null; holdUsed=false;
+    score=0; lines=0; level=startLevel; elapsed=0;
+    applyPalette(Math.floor(level/5));
+    updateHud();
+    draw();
+    powerLed.style.opacity='.35';
+    menuRow=0;
+    renderMenu();
+    showOverlay('TETRIS','','','main');
+  }
+
+  function pauseInput(cmd){
+    if(!cmd) return;
+    if(cmd==='resume'){ togglePause(); return; }
+    if(cmd==='go'){ if(pauseRow===0) togglePause(); else quitToMenu(); return; }
+    pauseRow = cmd==='up' ? 0 : 1;
+    sfxMove();
+    renderPauseMenu();
+  }
+
+  resumeBtn.addEventListener('click', function(){ if(gameState==='paused') togglePause(); });
+  quitBtn.addEventListener('click', quitToMenu);
 
   /* ---------------- menu: mode and start level ---------------- */
   function renderMenu(){
@@ -638,8 +678,10 @@
   }
 
   var BUTTON_MENU={drop:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
+  var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
   function doAction(action){
     if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
+    if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
     switch(action){
       case 'left': if(tryMove(-1,0)) draw(); break;
       case 'right': if(tryMove(1,0)) draw(); break;
@@ -680,12 +722,18 @@
     btn.addEventListener('contextmenu',function(e){ e.preventDefault(); });
   });
 
-  overlay.addEventListener('click', function(e){
-    if(menuEl.contains(e.target)) return;
+  overlay.addEventListener('pointerup', function(e){
+    if(e.target.closest('.menu')) return;
     if(gameState==='paused') togglePause();
     else if(inMenu()) menuInput('go');
   });
   consoleEl.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  // iOS shows its magnifier loupe on a long press unless touchstart is cancelled; pointer events still fire.
+  // Real buttons are skipped because cancelling touchstart also cancels their click.
+  consoleEl.addEventListener('touchstart', function(e){
+    if(e.target.closest('.mute, .mbtn, .mitem')) return;
+    e.preventDefault();
+  }, {passive:false});
 
   var KEYMAP={
     ArrowLeft:'left', ArrowRight:'right', ArrowDown:'soft',
@@ -694,13 +742,15 @@
     KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold'
   };
   var KEY_MENU={ArrowUp:'up', ArrowDown:'down', ArrowLeft:'dec', ArrowRight:'inc', Enter:'go', Space:'go', KeyP:'go'};
+  var KEY_PAUSE={ArrowUp:'up', ArrowDown:'down', Enter:'go', Space:'go', KeyP:'resume', Escape:'resume'};
   window.addEventListener('keydown',function(e){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
-    if(inMenu()){
-      var cmd=KEY_MENU[e.code];
+    if(inMenu() || gameState==='paused'){
+      var cmd=(inMenu() ? KEY_MENU : KEY_PAUSE)[e.code];
       if(!cmd) return;
       e.preventDefault();
-      if(!e.repeat) menuInput(cmd);
+      if(e.repeat) return;
+      if(inMenu()) menuInput(cmd); else pauseInput(cmd);
       return;
     }
     var action=KEYMAP[e.code];
@@ -818,7 +868,7 @@
   applyPalette(Math.floor(level/5));
   updateHud();
   renderMenu();
-  showOverlay('TETRIS','','',true);
+  showOverlay('TETRIS','','','main');
   powerLed.style.opacity='.35';
   fit();
   window.addEventListener('resize', queueFit);
