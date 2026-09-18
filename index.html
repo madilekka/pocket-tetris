@@ -13,6 +13,8 @@
 <meta property="og:description" content="Тетрис в стиле карманной консоли — играй прямо в браузере телефона.">
 <title>Pocket Tetris</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%239bbc0f'/%3E%3Cpath d='M2 9h4v4H2zM6 9h4v4H6zM10 9h4v4h-4zM6 5h4v4H6z' fill='%230f380f'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -360,6 +362,30 @@
   .help b{ font-weight:600; opacity:1; }
   .help .nw{ white-space:nowrap; }
   .help-touch{ display:none; }
+  .below{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .install{
+    padding:11px 18px;
+    border:none;
+    border-radius:6px;
+    background: var(--shell-hi);
+    color: var(--ink);
+    font: 600 13px/1 'JetBrains Mono', ui-monospace, Consolas, monospace;
+    box-shadow: 0 2px 0 var(--shell-lo);
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .install:active{ transform: translateY(1px); box-shadow: 0 1px 0 var(--shell-lo); }
+  .ios-hint{
+    margin:0;
+    font-size:12px;
+    text-align:center;
+    color: var(--shell-hi);
+  }
   @media (hover: none) and (pointer: coarse){
     .help-keys{ display:none; }
     .help-touch{ display:inline; }
@@ -433,10 +459,14 @@
     </div>
   </div>
 
-  <p class="help" id="help">
-    <span class="help-keys"><b>&larr; &rarr;</b> двигать · <b>&darr;</b> ускорить · <b>пробел</b> сбросить<br><b>&uarr; / X</b>, <b>Z</b> повернуть · <b>C</b> отложить · <span class="nw"><b>Enter</b> старт/пауза</span></span>
-    <span class="help-touch"><b>&#9664;&#xFE0E; &#9654;&#xFE0E;</b> двигать · <b>&#9660;</b> ускорить · <b>&#9650;</b> сбросить<br><b>A / B</b> повернуть · <b>HOLD</b> отложить фигуру</span>
-  </p>
+  <div class="below" id="below">
+    <p class="help">
+      <span class="help-keys"><b>&larr; &rarr;</b> двигать · <b>&darr;</b> ускорить · <b>пробел</b> сбросить<br><b>&uarr; / X</b>, <b>Z</b> повернуть · <b>C</b> отложить · <span class="nw"><b>Enter</b> старт/пауза</span></span>
+      <span class="help-touch"><b>&#9664;&#xFE0E; &#9654;&#xFE0E;</b> двигать · <b>&#9660;</b> ускорить · <b>&#9650;</b> сбросить<br><b>A / B</b> повернуть · <b>HOLD</b> отложить фигуру</span>
+    </p>
+    <button type="button" class="install" id="installBtn" hidden>Установить как приложение</button>
+    <p class="ios-hint" id="iosHint" hidden>Чтобы установить: <b>Поделиться</b> &rarr; <b>На экран «Домой»</b></p>
+  </div>
 </main>
 
 <script>
@@ -451,7 +481,8 @@
   var toastEl=$('toast'), overlay=$('overlay'), overlayTitle=$('overlayTitle'), overlaySub=$('overlaySub'), overlayStats=$('overlayStats');
   var linesVal=$('linesVal'), levelVal=$('levelVal'), scoreVal=$('scoreVal'), topVal=$('topVal');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
-  var consoleEl=$('console'), fitEl=$('fit'), helpEl=$('help');
+  var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below');
+  var installBtn=$('installBtn'), iosHint=$('iosHint');
 
   /* ---------------- pieces ---------------- */
   var SHAPES={
@@ -780,8 +811,8 @@
     var w=consoleEl.offsetWidth, h=consoleEl.offsetHeight;
     var bs=getComputedStyle(document.body);
     var availW=document.documentElement.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
-    var helpH=helpEl.offsetHeight ? helpEl.offsetHeight + 14 : 0;
-    var availH=window.innerHeight - parseFloat(bs.paddingTop) - parseFloat(bs.paddingBottom) - helpH;
+    var belowH=belowEl.offsetHeight ? belowEl.offsetHeight + 14 : 0;
+    var availH=window.innerHeight - parseFloat(bs.paddingTop) - parseFloat(bs.paddingBottom) - belowH;
     scale=Math.max(0.4, Math.min(availW/w, availH/h, 1.5));
     consoleEl.style.transform='scale('+scale+')';
     fitEl.style.width=(w*scale)+'px';
@@ -1064,6 +1095,35 @@
   window.addEventListener('orientationchange', queueFit);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   requestAnimationFrame(tick);
+
+  /* ---------------- install as app ---------------- */
+  var installPrompt=null;
+  function setInstallVisible(show){
+    installBtn.hidden=!show;
+    queueFit();
+  }
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    installPrompt=e;
+    setInstallVisible(true);
+  });
+  installBtn.addEventListener('click',function(){
+    if(!installPrompt) return;
+    installPrompt.prompt();
+    var done=function(){ installPrompt=null; setInstallVisible(false); };
+    installPrompt.userChoice.then(done,done);
+  });
+  window.addEventListener('appinstalled',function(){ installPrompt=null; setInstallVisible(false); });
+
+  var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var isStandalone=(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true;
+  if(isIOS && !isStandalone){ iosHint.hidden=false; queueFit(); }
+
+  if('serviceWorker' in navigator && location.protocol!=='file:'){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
 })();
 </script>
 </body>
