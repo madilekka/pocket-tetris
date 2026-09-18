@@ -12,6 +12,7 @@
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel')];
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
+  var startPill=$('startPill'), startLabel=$('startLabel');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -26,9 +27,15 @@
     {id:'ultra', name:'2 MINUTES', hint:'MAX SCORE'}
   ];
   var SPRINT_LINES=40, ULTRA_MS=120000;
+  // Only MARATHON lets the player pick a level. The timed modes use fixed rules so friends' records are comparable:
+  // 40 LINES runs at a steady medium speed; 2 MINUTES starts at 0 and levels up every 5 lines, so it gets hard fast.
+  var SPRINT_LEVEL=5, ULTRA_LINES_PER_LEVEL=5;
+  function baseLevel(){ return mode==='marathon' ? startLevel : (mode==='sprint' ? SPRINT_LEVEL : 0); }
+  function linesPerLevel(){ return mode==='ultra' ? ULTRA_LINES_PER_LEVEL : 10; }
   var modeIdx=0, mode='marathon', startLevel=0, menuRow=0, menuLockUntil=0;
   var best={marathon:0, sprint:0, ultra:0};
-  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint', ultra:'pocket-tetris-best-ultra'};
+  // Timed-mode keys carry a version: records set before these modes got fixed rules are not comparable.
+  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint-v2', ultra:'pocket-tetris-best-ultra-v2'};
 
   /* ---------------- pieces ---------------- */
   var SHAPES={
@@ -184,7 +191,7 @@
     }
     var leveledUp=false;
     if(mode!=='sprint'){
-      var newLevel=startLevel+Math.floor(lines/10);
+      var newLevel=baseLevel()+Math.floor(lines/linesPerLevel());
       leveledUp=newLevel>level;
       if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
     }
@@ -292,8 +299,9 @@
       toGo=Math.max(0,SPRINT_LINES-lines);
       filled=Math.min(10,Math.floor(lines/(SPRINT_LINES/10)));
     } else {
-      toGo=10-(lines%10);
-      filled=lines%10;
+      var lpl=linesPerLevel();
+      toGo=lpl-(lines%lpl);
+      filled=Math.round((lines%lpl)*10/lpl);
     }
     for(var i=0;i<10;i++) lvCells[i].classList.toggle('on', i<filled);
     lvLeft.textContent=String(toGo);
@@ -509,14 +517,22 @@
     overlayPrompt.hidden = kind!=='main';
     lcdHelp.hidden = gameState!=='ready';
     overlay.hidden=false;
+    setStartLabel(kind==='pause' ? 'RESUME' : 'START', kind==='pause' ? 'Продолжить' : 'Старт');
   }
-  function hideOverlay(){ overlay.hidden=true; }
+  function hideOverlay(){
+    overlay.hidden=true;
+    setStartLabel('PAUSE','Пауза');
+  }
+  function setStartLabel(text,aria){
+    startLabel.textContent=text;
+    startPill.setAttribute('aria-label',aria);
+  }
 
   function startGame(){
     ensureAudio();
     resetBoard();
     mode=MODES[modeIdx].id;
-    score=0; lines=0; level=startLevel; elapsed=0; dropAcc=0; lockTimer=0;
+    score=0; lines=0; level=baseLevel(); elapsed=0; dropAcc=0; lockTimer=0;
     nextKey=null; heldKey=null; holdUsed=false; combo=-1; backToBack=false; flashRows=null;
     pieceCounts={};
     bag=[];
@@ -590,7 +606,7 @@
     gameState='ready';
     resetBoard();
     piece=null; nextKey=null; heldKey=null; holdUsed=false;
-    score=0; lines=0; level=startLevel; elapsed=0;
+    score=0; lines=0; level=baseLevel(); elapsed=0;
     applyPalette(Math.floor(level/5));
     updateHud();
     draw();
@@ -618,13 +634,16 @@
     modeValEl.textContent=m.name;
     modeHintEl.textContent=m.hint;
     levelSelEl.textContent='LEVEL '+startLevel;
+    var hasLevel = m.id==='marathon';
+    if(!hasLevel) menuRow=0;
+    menuRows[1].hidden=!hasLevel;
     menuRows[0].classList.toggle('focus', menuRow===0);
     menuRows[1].classList.toggle('focus', menuRow===1);
   }
 
   function selectionChanged(){
     mode=MODES[modeIdx].id;
-    score=0; lines=0; level=startLevel; elapsed=0;
+    score=0; lines=0; level=baseLevel(); elapsed=0;
     applyPalette(Math.floor(level/5));
     writeStore('pocket-tetris-mode', mode);
     writeStore('pocket-tetris-level', String(startLevel));
@@ -862,7 +881,7 @@
   modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
   startLevel=Math.min(9, Math.max(0, parseInt(readStore('pocket-tetris-level')||'0',10)||0));
   mode=MODES[modeIdx].id;
-  level=startLevel;
+  level=baseLevel();
   muted=readStore('pocket-tetris-muted')==='1';
   renderMute();
   resetBoard();
