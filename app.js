@@ -24,16 +24,48 @@
   var MODES=[
     {id:'marathon', name:'MARATHON', hint:'ENDLESS'},
     {id:'sprint', name:'40 LINES', hint:'BEAT THE CLOCK'},
-    {id:'ultra', name:'2 MINUTES', hint:'MAX SCORE'}
+    {id:'ultra', name:'2 MINUTES', hint:'MAX SCORE'},
+    {id:'daily', name:'DAILY', hint:''}
   ];
   var SPRINT_LINES=40, ULTRA_MS=120000;
   // Only MARATHON lets the player pick a level. The timed modes use fixed rules so friends' records are comparable:
   // 40 LINES runs at a steady medium speed; 2 MINUTES starts at 0 and levels up every 5 lines, so it gets hard fast.
   var SPRINT_LEVEL=5, ULTRA_LINES_PER_LEVEL=5;
   function baseLevel(){ return mode==='marathon' ? startLevel : (mode==='sprint' ? SPRINT_LEVEL : 0); }
-  function linesPerLevel(){ return mode==='ultra' ? ULTRA_LINES_PER_LEVEL : 10; }
+  function onTheClock(){ return mode==='ultra' || mode==='daily'; }
+  function linesPerLevel(){ return onTheClock() ? ULTRA_LINES_PER_LEVEL : 10; }
+
+  /* ---------------- daily challenge ---------------- */
+  // Everyone gets the same piece order on the same day: the shuffle is seeded with the date.
+  // The day is counted in Kazakhstan time (UTC+5) so friends in other time zones share one challenge.
+  function dayParts(){ var t=new Date(Date.now()+5*3600000); return {y:t.getUTCFullYear(), m:t.getUTCMonth()+1, d:t.getUTCDate()}; }
+  function dayKey(){ var p=dayParts(); return p.y*10000+p.m*100+p.d; }
+  function dayLabel(){ var p=dayParts(); return (p.d<10?'0':'')+p.d+'.'+(p.m<10?'0':'')+p.m; }
+  function seededRandom(seed){
+    var a=seed>>>0;
+    return function(){
+      a=(a+0x6D2B79F5)>>>0;
+      var t=Math.imul(a^(a>>>15), a|1);
+      t^=t+Math.imul(t^(t>>>7), t|61);
+      return ((t^(t>>>14))>>>0)/4294967296;
+    };
+  }
+  var random=Math.random, dailyDay=0;
+  function refreshDaily(){
+    var k=dayKey();
+    if(k===dailyDay) return;
+    dailyDay=k;
+    BEST_KEYS.daily='pocket-tetris-daily-'+k;
+    best.daily=parseInt(readStore(BEST_KEYS.daily)||'0',10)||0;
+    try{
+      for(var i=localStorage.length-1;i>=0;i--){
+        var sk=localStorage.key(i);
+        if(sk && sk.indexOf('pocket-tetris-daily-')===0 && sk!==BEST_KEYS.daily) localStorage.removeItem(sk);
+      }
+    }catch(e){}
+  }
   var modeIdx=0, mode='marathon', startLevel=0, menuRow=0, menuLockUntil=0;
-  var best={marathon:0, sprint:0, ultra:0};
+  var best={marathon:0, sprint:0, ultra:0, daily:0};
   // Timed-mode keys carry a version: records set before these modes got fixed rules are not comparable.
   var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint-v2', ultra:'pocket-tetris-best-ultra-v2'};
 
@@ -68,7 +100,7 @@
   var bag=[];
   function newBag(){
     var b=KEYS.slice();
-    for(var i=b.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0; var t=b[i]; b[i]=b[j]; b[j]=t; }
+    for(var i=b.length-1;i>0;i--){ var j=(random()*(i+1))|0; var t=b[i]; b[i]=b[j]; b[j]=t; }
     return b;
   }
   function nextFromBag(){ if(bag.length===0) bag=newBag(); return bag.pop(); }
@@ -532,6 +564,8 @@
     ensureAudio();
     resetBoard();
     mode=MODES[modeIdx].id;
+    refreshDaily();
+    random = mode==='daily' ? seededRandom(Math.imul(dailyDay, 2654435761)) : Math.random;
     score=0; lines=0; level=baseLevel(); elapsed=0; dropAcc=0; lockTimer=0;
     nextKey=null; heldKey=null; holdUsed=false; combo=-1; backToBack=false; flashRows=null;
     pieceCounts={};
@@ -562,9 +596,9 @@
       if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
       sfxLevel();
     } else if(kind==='timeup'){
-      title='TIME UP';
+      title = mode==='daily' ? 'DAILY '+dayLabel() : 'TIME UP';
       sub='SCORE '+score;
-      if(score>best.ultra){ best.ultra=score; record=true; }
+      if(score>best[mode]){ best[mode]=score; record=true; }
       sfxLevel();
     } else {
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
@@ -574,7 +608,8 @@
     updateHud();
     draw();
     powerLed.style.opacity='.35';
-    showOverlay(title, (record ? 'NEW RECORD' + (sub ? '\n' : '') : '') + sub, statsLine(), 'main');
+    var recordText = mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
+    showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, statsLine(), 'main');
   }
 
   function togglePause(){
@@ -631,8 +666,9 @@
   /* ---------------- menu: mode and start level ---------------- */
   function renderMenu(){
     var m=MODES[modeIdx];
+    refreshDaily();
     modeValEl.textContent=m.name;
-    modeHintEl.textContent=m.hint;
+    modeHintEl.textContent = m.id==='daily' ? 'TODAY '+dayLabel() : m.hint;
     levelSelEl.textContent='LEVEL '+startLevel;
     var hasLevel = m.id==='marathon';
     if(!hasLevel) menuRow=0;
@@ -857,7 +893,7 @@
       elapsed+=dt;
       if(mode!=='marathon') updateTimeHud();
     }
-    if(gameState==='playing' && mode==='ultra' && elapsed>=ULTRA_MS){
+    if(gameState==='playing' && onTheClock() && elapsed>=ULTRA_MS){
       endGame('timeup');
     } else if(gameState==='playing'){
       dropAcc+=dt;
@@ -877,6 +913,7 @@
   }
 
   /* ---------------- boot ---------------- */
+  refreshDaily();
   for(var bk in BEST_KEYS) best[bk]=parseInt(readStore(BEST_KEYS[bk])||'0',10)||0;
   modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
   startLevel=Math.min(9, Math.max(0, parseInt(readStore('pocket-tetris-level')||'0',10)||0));
