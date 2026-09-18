@@ -35,7 +35,8 @@
         <div class="screen" id="screen">
           <div class="linesbar">
             <span>LINES <span id="linesVal">000</span></span>
-            <span class="lvwrap"><span class="lvbar" id="lvBar"></span><span id="lvLeft">10</span></span>
+            <span class="lvwrap" id="lvWrap"><span class="lvbar" id="lvBar"></span><span id="lvLeft">10</span></span>
+            <span id="goalText" hidden>CLEAR ALL</span>
           </div>
           <canvas id="board" width="160" height="320"></canvas>
           <div class="sidebar">
@@ -48,15 +49,15 @@
               <canvas id="next" class="mini" width="46" height="46"></canvas>
             </div>
             <div class="panel">
-              <div class="label">LEVEL</div>
+              <div class="label" id="levelLabel">LEVEL</div>
               <div class="value" id="levelVal">0</div>
             </div>
             <div class="panel">
-              <div class="label">SCORE</div>
+              <div class="label" id="scoreLabel">SCORE</div>
               <div class="value" id="scoreVal">0</div>
             </div>
             <div class="panel" id="timePanel" hidden>
-              <div class="label">TIME</div>
+              <div class="label" id="timeLabel">TIME</div>
               <div class="value" id="timeVal">0:00</div>
             </div>
             <div class="panel">
@@ -96,6 +97,7 @@
             </div>
             <div class="menu" id="pauseMenu" hidden>
               <button type="button" class="mrow mitem" id="resumeBtn">CONTINUE</button>
+              <button type="button" class="mrow mitem" id="restartBtn">RESTART</button>
               <button type="button" class="mrow mitem" id="quitBtn">QUIT TO MENU</button>
             </div>
             <div class="small blink" id="overlayPrompt">PRESS START</div>
@@ -134,6 +136,7 @@ START - ПАУЗА И МЕНЮ
     <p class="ios-hint" id="iosHint" hidden>Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b></p>
   </div>
 </main>
+<script src="puzzles.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

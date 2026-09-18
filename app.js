@@ -12,6 +12,8 @@
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel'), $('rowColor')];
   var colorValEl=$('colorVal'), colorHintEl=$('colorHint'), optCapEl=$('optCap');
+  var levelLabel=$('levelLabel'), scoreLabel=$('scoreLabel'), timeLabel=$('timeLabel'), lvWrap=$('lvWrap'), goalText=$('goalText');
+  var restartBtn=$('restartBtn');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
@@ -26,8 +28,32 @@
     {id:'marathon', name:'MARATHON', hint:'БЕСКОНЕЧНАЯ ИГРА'},
     {id:'sprint', name:'40 LINES', hint:'СОБЕРИ 40 ЛИНИЙ НА ВРЕМЯ'},
     {id:'ultra', name:'TIME ATTACK', hint:'МАКСИМУМ ОЧКОВ ЗА ВРЕМЯ'},
-    {id:'daily', name:'DAILY', hint:''}
+    {id:'daily', name:'DAILY', hint:''},
+    {id:'puzzle', name:'PUZZLES', hint:'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ'}
   ];
+
+  /* ---------------- puzzles ---------------- */
+  // Each level is a fixed board and a fixed list of pieces; the goal is to clear every block.
+  // Pieces don't fall on their own and lock only on a hard drop, so the player can think.
+  var PUZZLES=window.POCKET_PUZZLES||[];
+  var puzzleIdx=0, puzzleQueue=[], solvedPuzzles=[];
+  function puzzleName(i){ return (Math.floor(i/8)+1)+'-'+(i%8+1); }
+  function puzzleUnlocked(i){ return i===0 || solvedPuzzles.indexOf(i-1)!==-1; }
+  function loadPuzzleBoard(i){
+    resetBoard();
+    var rows=PUZZLES[i].rows;
+    for(var r=0;r<rows.length;r++){
+      for(var x=0;x<COLS;x++) board[ROWS-rows.length+r][x] = rows[r].charAt(x)==='#' ? 1 : 0;
+    }
+  }
+  function boardEmpty(){
+    for(var r=0;r<ROWS;r++) for(var x=0;x<COLS;x++) if(board[r][x]) return false;
+    return true;
+  }
+  function nextPiece(){
+    if(mode==='puzzle') return puzzleQueue.length ? puzzleQueue.shift() : null;
+    return nextFromBag();
+  }
   var SPRINT_LINES=40, SPRINT_LEVEL=5, DAILY_MINUTES=5;
   var DURATIONS=[5,7,10];
   // Only MARATHON lets the player pick a level; the other modes have fixed rules so friends' records are comparable.
@@ -185,10 +211,15 @@
   }
 
   function spawn(){
-    placeAtTop(nextKey || nextFromBag());
-    nextKey=nextFromBag();
+    var key=nextKey || nextPiece();
+    // In puzzles the held piece is played last once the list runs out.
+    if(!key && heldKey){ key=heldKey; heldKey=null; drawHold(); }
+    if(!key){ endGame('nopieces'); return; }
+    placeAtTop(key);
+    nextKey=nextPiece();
     pieceCounts[pieceKey]=(pieceCounts[pieceKey]||0)+1;
     drawNext();
+    if(mode==='puzzle') updateHud();
     if(collides(piece,px,py)) endGame('topout');
   }
 
@@ -255,22 +286,25 @@
       backToBack=false;
     }
     var leveledUp=false;
-    if(mode!=='sprint'){
+    if(mode!=='sprint' && mode!=='puzzle'){
       var newLevel=baseLevel()+Math.floor(lines/linesPerLevel());
       leveledUp=newLevel>level;
       if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
     }
     if(combo>0) msg+='\nCOMBO x'+combo;
-    if(cleared===4) unlockSkin('purple');
-    if(combo>=3) unlockSkin('teal');
-    if(mode==='marathon' && lines>=100) unlockSkin('black');
-    if(score>=50000) unlockSkin('gold');
+    if(mode!=='puzzle'){
+      if(cleared===4) unlockSkin('purple');
+      if(combo>=3) unlockSkin('teal');
+      if(mode==='marathon' && lines>=100) unlockSkin('black');
+      if(score>=50000) unlockSkin('gold');
+    }
     updateHud();
     sfxClear(cleared);
     if(leveledUp) sfxLevel();
     showToast(msg,800);
     flashRows=null;
     if(mode==='sprint' && lines>=SPRINT_LINES){ endGame('complete'); return; }
+    if(mode==='puzzle' && boardEmpty()){ endGame('solved'); return; }
     gameState='playing';
     spawn();
     holdUsed=false;
@@ -364,6 +398,24 @@
   }
   function updateHud(){
     linesVal.textContent=String(lines).padStart(3,'0');
+    var isPuzzle = mode==='puzzle';
+    lvWrap.hidden=isPuzzle;
+    goalText.hidden=!isPuzzle;
+    if(isPuzzle){
+      // The side panels switch roles: which puzzle, pieces left, the pieces after NEXT, and overall progress.
+      var p=PUZZLES[puzzleIdx];
+      var left = inGame() ? puzzleQueue.length+(nextKey?1:0)+(heldKey?1:0)+(piece?1:0) : p.pieces.length;
+      var upcoming = inGame() ? puzzleQueue.join('') : p.pieces.slice(2);
+      levelLabel.textContent='PUZZLE'; setNum(levelVal,puzzleName(puzzleIdx));
+      scoreLabel.textContent='PIECES'; setNum(scoreVal,left);
+      timePanel.hidden=false;
+      timeLabel.textContent='QUEUE'; setNum(timeVal,upcoming||'-');
+      topLabel.textContent='SOLVED'; setNum(topVal,solvedPuzzles.length+'/'+PUZZLES.length);
+      return;
+    }
+    levelLabel.textContent='LEVEL';
+    scoreLabel.textContent='SCORE';
+    timeLabel.textContent='TIME';
     var toGo, filled;
     if(mode==='sprint'){
       toGo=Math.max(0,SPRINT_LINES-lines);
@@ -381,7 +433,7 @@
     topLabel.textContent = mode==='marathon' ? 'TOP' : 'BEST';
     setNum(topVal,bestText());
     lastTimeText='';
-    updateTimeHud();
+    if(!timePanel.hidden) updateTimeHud();
   }
   function readStore(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
   function writeStore(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
@@ -617,7 +669,8 @@
     pauseMenuEl.hidden = kind!=='pause';
     overlayPrompt.hidden = kind!=='main';
     lcdHelp.hidden = gameState!=='ready';
-    shareRow.hidden = !(kind==='main' && gameState==='gameover' && lastResult);
+    var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
+    shareRow.hidden = !(kind==='main' && gameState==='gameover' && lastResult && !failedPuzzle);
     overlay.hidden=false;
     setStartLabel(kind==='pause' ? 'RESUME' : 'START', kind==='pause' ? 'Продолжить' : 'Старт');
   }
@@ -642,6 +695,11 @@
     pieceCounts={};
     bag=[];
     gesture=null;
+    puzzleQueue=[];
+    if(mode==='puzzle'){
+      loadPuzzleBoard(puzzleIdx);
+      puzzleQueue=PUZZLES[puzzleIdx].pieces.split('');
+    }
     applyPalette(Math.floor(level/5));
     hideOverlay();
     gameState='playing';
@@ -651,6 +709,13 @@
     drawHold();
     draw();
     scheduleTune();
+    if(mode==='puzzle') showToast('PUZZLE '+puzzleName(puzzleIdx)+'\nCLEAR THE BOARD',1600);
+  }
+
+  function restartGame(){
+    if(gameState!=='paused') return;
+    if(mode==='marathon' && score>best.marathon){ best.marathon=score; saveBest(); }
+    startGame();
   }
 
   function endGame(kind){
@@ -660,12 +725,28 @@
     gesture=null;
     // Ignore menu input briefly, so taps meant for the last piece don't restart the game.
     menuLockUntil=performance.now()+900;
-    var title='GAME OVER', sub='', record=false;
+    var title='GAME OVER', sub='', record=false, puzzleLabel=puzzleName(puzzleIdx);
     if(kind==='complete'){
       title='COMPLETE';
       sub='TIME '+fmtTime(elapsed,true);
       if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
       sfxLevel();
+    } else if(mode==='puzzle'){
+      if(kind==='solved'){
+        title='SOLVED!';
+        if(solvedPuzzles.indexOf(puzzleIdx)===-1){
+          solvedPuzzles.push(puzzleIdx);
+          writeStore('pocket-tetris-puzzles', JSON.stringify(solvedPuzzles));
+        }
+        var hasNext = puzzleIdx+1 < PUZZLES.length;
+        sub='PUZZLE '+puzzleLabel+(hasNext ? '\nSTART: NEXT PUZZLE' : '\nALL PUZZLES SOLVED!');
+        if(hasNext){ puzzleIdx++; writeStore('pocket-tetris-puzzle', String(puzzleIdx)); }
+        sfxLevel();
+      } else {
+        title = kind==='nopieces' ? 'OUT OF PIECES' : 'GAME OVER';
+        sub='START: TRY AGAIN';
+        sfxGameOver();
+      }
     } else if(onTheClock()){
       // In timed games the score counts even after a top-out: survival is part of the challenge, not a reason to lose everything.
       if(kind==='timeup') title = mode==='daily' ? 'DAILY '+dayLabel() : 'TIME UP';
@@ -677,12 +758,13 @@
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
       sfxGameOver();
     }
-    lastResult={mode:mode, kind:kind, score:score, lines:lines, elapsed:elapsed, minutes:minutes(), day:dayLabel()};
+    lastResult={mode:mode, kind:kind, score:score, lines:lines, elapsed:elapsed, minutes:minutes(), day:dayLabel(), puzzle:puzzleLabel};
     if(kind==='complete') unlockSkin('yellow');
     if(kind==='timeup' && mode==='daily') unlockSkin('red');
-    if(score>=50000) unlockSkin('gold');
+    if(mode!=='puzzle' && score>=50000) unlockSkin('gold');
     saveBest();
     updateHud();
+    renderMenu();
     draw();
     powerLed.style.opacity='.35';
     var recordText = mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
@@ -696,6 +778,7 @@
     if(r.mode==='sprint') return r.kind==='complete'
       ? 'Pocket Tetris: собрал 40 линий за '+fmtTime(r.elapsed,true)+'! Сможешь быстрее?'
       : 'Pocket Tetris: собрал '+r.lines+' из 40 линий. Попробуй пройти все!';
+    if(r.mode==='puzzle') return 'Pocket Tetris: решил головоломку '+r.puzzle+'! Сможешь очистить поле?';
     if(r.mode==='daily') return 'Pocket Tetris, испытание дня '+r.day+': '+fmtScore(r.score)+' очков! Сегодня у всех одинаковые фигуры — сможешь больше?';
     if(r.mode==='ultra') return 'Pocket Tetris, '+r.minutes+' минут: '+fmtScore(r.score)+' очков! Сможешь больше?';
     return 'Pocket Tetris, марафон: '+fmtScore(r.score)+' очков и '+r.lines+' линий! Сможешь больше?';
@@ -733,19 +816,20 @@
   var pauseRow=0;
   function renderPauseMenu(){
     resumeBtn.classList.toggle('focus', pauseRow===0);
-    quitBtn.classList.toggle('focus', pauseRow===1);
+    restartBtn.classList.toggle('focus', pauseRow===1);
+    quitBtn.classList.toggle('focus', pauseRow===2);
   }
 
   function quitToMenu(){
     if(gameState!=='paused') return;
     if(mode==='marathon' && score>best.marathon){ best.marathon=score; saveBest(); }
     gameState='ready';
-    resetBoard();
-    piece=null; nextKey=null; heldKey=null; holdUsed=false;
+    if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
+    piece=null; nextKey=null; heldKey=null; holdUsed=false; puzzleQueue=[];
     score=0; lines=0; level=baseLevel(); elapsed=0;
     applyPalette(Math.floor(level/5));
     updateHud();
-    draw();
+    draw(); drawNext(); drawHold();
     powerLed.style.opacity='.35';
     menuRow=0;
     renderMenu();
@@ -755,13 +839,14 @@
   function pauseInput(cmd){
     if(!cmd) return;
     if(cmd==='resume'){ togglePause(); return; }
-    if(cmd==='go'){ if(pauseRow===0) togglePause(); else quitToMenu(); return; }
-    pauseRow = cmd==='up' ? 0 : 1;
+    if(cmd==='go'){ [togglePause, restartGame, quitToMenu][pauseRow](); return; }
+    pauseRow = Math.max(0, Math.min(2, pauseRow + (cmd==='up' ? -1 : 1)));
     sfxMove();
     renderPauseMenu();
   }
 
   resumeBtn.addEventListener('click', function(){ if(gameState==='paused') togglePause(); });
+  restartBtn.addEventListener('click', restartGame);
   quitBtn.addEventListener('click', quitToMenu);
 
   /* ---------------- menu: mode and start level ---------------- */
@@ -770,10 +855,18 @@
     refreshDaily();
     modeValEl.textContent=m.name;
     modeHintEl.textContent = m.id==='daily' ? dayLabel()+' - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ' : m.hint;
-    // The second row is the start level in MARATHON and the game length in TIME ATTACK.
-    var hasOption = m.id==='marathon' || m.id==='ultra';
-    levelSelEl.textContent = m.id==='ultra' ? DURATIONS[durIdx]+' MINUTES' : 'LEVEL '+startLevel;
-    optCapEl.textContent = m.id==='ultra' ? 'ДЛИТЕЛЬНОСТЬ' : 'СТАРТОВЫЙ УРОВЕНЬ';
+    // The second row is the start level in MARATHON, the game length in TIME ATTACK and the level in PUZZLES.
+    var hasOption = m.id==='marathon' || m.id==='ultra' || m.id==='puzzle';
+    if(m.id==='ultra'){
+      levelSelEl.textContent=DURATIONS[durIdx]+' MINUTES';
+      optCapEl.textContent='ДЛИТЕЛЬНОСТЬ';
+    } else if(m.id==='puzzle'){
+      levelSelEl.textContent='PUZZLE '+puzzleName(puzzleIdx);
+      optCapEl.textContent='УРОВЕНЬ - РЕШЕНО '+solvedPuzzles.length+' ИЗ '+PUZZLES.length;
+    } else {
+      levelSelEl.textContent='LEVEL '+startLevel;
+      optCapEl.textContent='СТАРТОВЫЙ УРОВЕНЬ';
+    }
     if(!hasOption && menuRow===1) menuRow=0;
     menuRows[1].hidden=!hasOption;
     optCapEl.hidden=!hasOption;
@@ -793,7 +886,19 @@
     writeStore('pocket-tetris-mode', mode);
     writeStore('pocket-tetris-level', String(startLevel));
     writeStore('pocket-tetris-minutes', String(DURATIONS[durIdx]));
+    writeStore('pocket-tetris-puzzle', String(puzzleIdx));
+    // Show the chosen puzzle's board behind the menu, so it's clear what the level looks like.
+    piece=null; nextKey=null; heldKey=null;
+    if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
+    draw(); drawNext(); drawHold();
     updateHud();
+  }
+
+  function stepPuzzle(d){
+    for(var i=1;i<=PUZZLES.length;i++){
+      var j=(puzzleIdx+d*i+PUZZLES.length*i)%PUZZLES.length;
+      if(puzzleUnlocked(j)){ puzzleIdx=j; return; }
+    }
   }
 
   function menuInput(cmd){
@@ -813,6 +918,7 @@
       } else {
         if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
         else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
+        else if(MODES[modeIdx].id==='puzzle') stepPuzzle(d);
         else startLevel=(startLevel+d+10)%10;
         selectionChanged();
       }
@@ -1011,10 +1117,12 @@
     lastTs=ts;
     if(gameState==='playing' || gameState==='clearing'){
       elapsed+=dt;
-      if(mode!=='marathon') updateTimeHud();
+      if(mode==='sprint' || onTheClock()) updateTimeHud();
     }
     if(gameState==='playing' && onTheClock() && elapsed>=timeLimit()){
       endGame('timeup');
+    } else if(gameState==='playing' && mode==='puzzle'){
+      draw();
     } else if(gameState==='playing'){
       dropAcc+=dt;
       if(dropAcc>=speedForLevel(level)){
@@ -1038,6 +1146,13 @@
   modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
   startLevel=Math.min(9, Math.max(0, parseInt(readStore('pocket-tetris-level')||'0',10)||0));
   durIdx=Math.max(0, DURATIONS.indexOf(parseInt(readStore('pocket-tetris-minutes')||'5',10)));
+  try{
+    var savedSolved=JSON.parse(readStore('pocket-tetris-puzzles')||'[]');
+    if(Array.isArray(savedSolved)) solvedPuzzles=savedSolved.filter(function(i){ return i===(i|0) && i>=0 && i<PUZZLES.length; });
+  }catch(e){}
+  puzzleIdx=Math.min(PUZZLES.length-1, Math.max(0, parseInt(readStore('pocket-tetris-puzzle')||'0',10)||0));
+  if(!puzzleUnlocked(puzzleIdx)) puzzleIdx=0;
+  if(!PUZZLES.length && MODES[modeIdx].id==='puzzle') modeIdx=0;
   mode=MODES[modeIdx].id;
   level=baseLevel();
   var savedSound=parseInt(readStore('pocket-tetris-sound'),10);
@@ -1052,7 +1167,7 @@
   skinIdx = (savedSkin && isUnlocked(savedSkin)) ? skinIndex(savedSkin) : 0;
   appliedSkin=SKINS[skinIdx].id;
   applySkin(appliedSkin);
-  resetBoard();
+  if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
   applyPalette(Math.floor(level/5));
   updateHud();
   renderMenu();
