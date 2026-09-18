@@ -3,6 +3,7 @@
   "short_name": "Pocket Tetris",
   "description": "Тетрис в стиле карманной консоли",
   "lang": "ru",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
