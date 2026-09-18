@@ -15,7 +15,9 @@
   var levelLabel=$('levelLabel'), scoreLabel=$('scoreLabel'), timeLabel=$('timeLabel'), lvWrap=$('lvWrap'), goalText=$('goalText');
   var restartBtn=$('restartBtn');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
-  var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
+  var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn'), topBtn=$('topBtn');
+  var topPanel=$('topPanel'), topText=$('topText'), topList=$('topList'), nameInput=$('nameInput');
+  var topMain=$('topMain'), topName=$('topName'), topBack=$('topBack');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -40,13 +42,15 @@
   var puzzleIdx=0, puzzleQueue=[], solvedPuzzles=[];
   function puzzleName(i){ return (Math.floor(i/8)+1)+'-'+(i%8+1); }
   function puzzleUnlocked(i){ return i===0 || solvedPuzzles.indexOf(i-1)!==-1; }
-  function loadPuzzleBoard(i){
-    resetBoard();
-    var rows=PUZZLES[i].rows;
-    for(var r=0;r<rows.length;r++){
-      for(var x=0;x<COLS;x++) board[ROWS-rows.length+r][x] = rows[r].charAt(x)==='#' ? 1 : 0;
+  function puzzleLayout(i){
+    var b=[], rows=PUZZLES[i].rows;
+    for(var r=0;r<ROWS;r++) b.push(new Array(COLS).fill(0));
+    for(var k=0;k<rows.length;k++){
+      for(var x=0;x<COLS;x++) b[ROWS-rows.length+k][x] = rows[k].charAt(x)==='#' ? 1 : 0;
     }
+    return b;
   }
+  function loadPuzzleBoard(i){ board=puzzleLayout(i); }
   function boardEmpty(){
     for(var r=0;r<ROWS;r++) for(var x=0;x<COLS;x++) if(board[r][x]) return false;
     return true;
@@ -690,18 +694,31 @@
   });
 
   /* ---------------- game flow ---------------- */
+  // The main screen's text is kept so it can come back after the daily top has covered it.
+  var mainOverlay=null;
   function showOverlay(title,sub,stats,kind){
+    if(kind==='main') mainOverlay=[title,sub,stats,kind];
     overlayTitle.textContent=title;
     overlaySub.textContent=sub||'';
     overlayStats.textContent=stats||'';
     menuEl.hidden = kind!=='main';
     pauseMenuEl.hidden = kind!=='pause';
     battlePanel.hidden = true;
+    topPanel.hidden = true;
     overlayPrompt.hidden = kind!=='main';
-    var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
-    shareRow.hidden = !(kind==='main' && gameState==='gameover' && lastResult && !failedPuzzle);
     overlay.hidden=false;
+    renderShareRow();
     setStartLabel(kind==='pause' ? 'RESUME' : 'START', kind==='pause' ? 'Продолжить' : 'Старт');
+  }
+  // SHARE after a finished game (not a failed puzzle); DAILY TOP whenever the menu is on DAILY.
+  function renderShareRow(){
+    var onMain = !overlay.hidden && !menuEl.hidden;
+    var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
+    var canShare = onMain && gameState==='gameover' && !!lastResult && !failedPuzzle;
+    var canTop = onMain && MODES[modeIdx].id==='daily';
+    shareBtn.hidden=!canShare;
+    topBtn.hidden=!canTop;
+    shareRow.hidden=!(canShare || canTop);
   }
   function hideOverlay(){
     overlay.hidden=true;
@@ -739,7 +756,12 @@
     drawHold();
     draw();
     scheduleTune();
-    if(mode==='puzzle') showToast('PUZZLE '+puzzleName(puzzleIdx)+'\nCLEAR THE BOARD',1600);
+    if(mode==='puzzle'){
+      var tip=PUZZLES[puzzleIdx].tip;
+      showToast('PUZZLE '+puzzleName(puzzleIdx)+'\n'+(tip || 'CLEAR THE BOARD'), tip ? 3000 : 1600);
+    }
+    // The free server sleeps when idle; wake it now so the daily top is ready when the game ends.
+    if(mode==='daily') wakeServer();
   }
 
   function restartGame(){
@@ -767,7 +789,7 @@
       renderLobby();
       return;
     }
-    var title='GAME OVER', sub='', record=false, puzzleLabel=puzzleName(puzzleIdx);
+    var title='GAME OVER', sub='', record=false, puzzleLabel=puzzleName(puzzleIdx), puzzleAt=puzzleIdx;
     if(kind==='complete'){
       title='COMPLETE';
       sub='TIME '+fmtTime(elapsed,true);
@@ -800,7 +822,13 @@
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
       sfxGameOver();
     }
-    lastResult={mode:mode, kind:kind, score:score, lines:lines, elapsed:elapsed, minutes:minutes(), day:dayLabel(), puzzle:puzzleLabel};
+    lastResult={mode:mode, kind:kind, score:score, lines:lines, level:level, elapsed:elapsed, minutes:minutes(), day:dayLabel(),
+      puzzle:puzzleLabel, pieces:PUZZLES.length ? PUZZLES[puzzleAt].pieces : '', record:record,
+      // A solved puzzle ends on an empty board, so the picture shows the puzzle it started from.
+      board: mode==='puzzle' ? puzzleLayout(puzzleAt) : board.map(function(row){ return row.slice(); })};
+    renderShareCard(lastResult);
+    // Before renderMenu: it may roll the daily over to a new day if the game ended after midnight.
+    if(mode==='daily') sendDailyResult(lastResult, dailyDay, best.daily);
     if(kind==='complete') unlockSkin('yellow');
     if(kind==='timeup' && mode==='daily') unlockSkin('red');
     if(mode!=='puzzle' && score>=50000) unlockSkin('gold');
@@ -821,14 +849,19 @@
       ? 'Pocket Tetris: собрал 40 линий за '+fmtTime(r.elapsed,true)+'! Сможешь быстрее?'
       : 'Pocket Tetris: собрал '+r.lines+' из 40 линий. Попробуй пройти все!';
     if(r.mode==='puzzle') return 'Pocket Tetris: решил головоломку '+r.puzzle+'! Сможешь очистить поле?';
-    if(r.mode==='daily') return 'Pocket Tetris, испытание дня '+r.day+': '+fmtScore(r.score)+' очков! Сегодня у всех одинаковые фигуры — сможешь больше?';
+    if(r.mode==='daily') return 'Pocket Tetris, испытание дня '+r.day+': '+fmtScore(r.score)+' очков!'+
+      (r.rank ? ' Я на '+r.rank+'-м месте из '+r.players+'.' : '')+' Сегодня у всех одинаковые фигуры — сможешь больше?';
     if(r.mode==='ultra') return 'Pocket Tetris, '+r.minutes+' минут: '+fmtScore(r.score)+' очков! Сможешь больше?';
     return 'Pocket Tetris, марафон: '+fmtScore(r.score)+' очков и '+r.lines+' линий! Сможешь больше?';
   }
   function shareResult(){
     if(!lastResult) return;
     var text=shareText(lastResult), url=location.origin+'/';
-    if(navigator.share){
+    var files=shareFile ? [shareFile] : null;
+    if(files && navigator.canShare && navigator.canShare({files:files})){
+      // Some apps drop a separate url when a picture is attached, so the link goes into the text.
+      navigator.share({title:'Pocket Tetris', text:text+' '+url, files:files}).catch(function(){});
+    } else if(navigator.share){
       navigator.share({title:'Pocket Tetris', text:text, url:url}).catch(function(){});
     } else if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('COPIED',1200); }, function(){ showToast('CANNOT SHARE',1200); });
@@ -838,23 +871,248 @@
   }
   shareBtn.addEventListener('click', shareResult);
 
+  /* ---------------- share card: the result as a picture ---------------- */
+  // Messengers show a picture far more prominently than a line of text, so the result is also drawn as a PNG
+  // in the console's current colors: the final board on the left, the numbers on the right.
+  // It's drawn when the game ends, because sharing has to start right in the tap, with the file ready.
+  var shareFile=null, shareSerial=0;
+  function cardContent(r){
+    var head, rows, badge='';
+    if(r.mode==='sprint'){
+      head='40 LINES';
+      rows = r.kind==='complete' ? [['TIME',fmtTime(r.elapsed,true)],['LINES','40']] : [['LINES',r.lines+'/40'],['TIME',fmtTime(r.elapsed,true)]];
+    } else if(r.mode==='puzzle'){
+      head='PUZZLE '+r.puzzle;
+      rows=[['RESULT','SOLVED!'],['PIECES',r.pieces]];
+    } else {
+      head = r.mode==='daily' ? 'DAILY '+r.day : r.mode==='ultra' ? 'TIME ATTACK '+r.minutes+' MIN' : 'MARATHON';
+      rows=[['SCORE',fmtScore(r.score)],['LINES',String(r.lines)],['LEVEL',String(r.level)]];
+      if(r.rank) rows.push(['PLACE',r.rank+' OF '+r.players]);
+    }
+    if(r.record && r.mode!=='puzzle') badge = r.mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
+    return {head:head, rows:rows, badge:badge};
+  }
+  function roundRectPath(g,x,y,w,h,rad){
+    g.beginPath();
+    g.moveTo(x+rad,y); g.arcTo(x+w,y,x+w,y+h,rad); g.arcTo(x+w,y+h,x,y+h,rad);
+    g.arcTo(x,y+h,x,y,rad); g.arcTo(x,y,x+w,y,rad); g.closePath();
+  }
+  function drawShareCard(r,serial){
+    if(serial!==shareSerial) return;
+    var W=720, H=960, cv=document.createElement('canvas'), g=cv.getContext('2d');
+    cv.width=W; cv.height=H;
+    var sk=SKINS[Math.max(0,skinIndex(appliedSkin))].c, c=cardContent(r);
+    function font(px){ g.font=px+"px 'Press Start 2P', monospace"; }
+    // Console shell and its brand row.
+    var shell=g.createLinearGradient(0,0,W,H);
+    shell.addColorStop(0,sk[1]); shell.addColorStop(.4,sk[0]); shell.addColorStop(1,sk[2]);
+    g.fillStyle=shell; g.fillRect(0,0,W,H);
+    g.fillStyle='#c0392b'; g.beginPath(); g.arc(52,74,8,0,Math.PI*2); g.fill();
+    font(16); g.fillStyle=sk[3]; g.globalAlpha=.75; g.fillText('POCKET SYSTEM',76,82); g.globalAlpha=1;
+    font(32); g.fillStyle=sk[4]; g.textAlign='right'; g.fillText('TETRIS',W-40,90); g.textAlign='left';
+    // Bezel and screen.
+    g.fillStyle='#2c2b25'; roundRectPath(g,32,120,W-64,736,18); g.fill();
+    var sx=60, sy=148, sw=W-120, sh=680;
+    g.fillStyle=pal.bg; g.fillRect(sx,sy,sw,sh);
+    font(16); g.fillStyle=pal.dark; g.fillText(c.head, sx+24, sy+44);
+    // The board.
+    var cell=28, bx=sx+24, by=sy+72;
+    g.strokeStyle=pal.mid; g.lineWidth=2; g.strokeRect(bx-3,by-3,COLS*cell+6,ROWS*cell+6);
+    for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+      var v=r.board[y][x];
+      if(!v) continue;
+      g.fillStyle = v===2 ? pal.mid : pal.dark;
+      g.fillRect(bx+x*cell+2, by+y*cell+2, cell-4, cell-4);
+    }
+    // Numbers on the right; the first one big, long values shrunk to fit.
+    var rx=bx+COLS*cell+32, rw=sx+sw-24-rx, ty=by+24;
+    c.rows.forEach(function(row,i){
+      font(16); g.fillStyle=pal.dark; g.globalAlpha=.7; g.fillText(row[0], rx, ty); g.globalAlpha=1;
+      var size = i===0 ? 32 : 24;
+      font(size);
+      while(size>12 && g.measureText(row[1]).width>rw){ size-=4; font(size); }
+      g.fillText(row[1], rx, ty+size+14);
+      ty += size+14+48;
+    });
+    if(c.badge){
+      font(16);
+      var bw=g.measureText(c.badge).width+24;
+      g.fillStyle=pal.dark; g.fillRect(rx,ty-8,bw,40);
+      g.fillStyle=pal.bg; g.fillText(c.badge, rx+12, ty+20);
+    }
+    // Scanlines, like the LCD in the game.
+    g.fillStyle=pal.dark; g.globalAlpha=.07;
+    for(var ly=sy; ly<sy+sh; ly+=4) g.fillRect(sx,ly,sw,1);
+    g.globalAlpha=1;
+    // Where to play.
+    font(16); g.fillStyle=sk[3]; g.textAlign='center'; g.fillText(location.host, W/2, 912); g.textAlign='left';
+    cv.toBlob(function(blob){
+      if(blob && serial===shareSerial) shareFile=new File([blob],'pocket-tetris.png',{type:'image/png'});
+    },'image/png');
+  }
+  function renderShareCard(r){
+    var serial=++shareSerial;
+    shareFile=null;
+    if(typeof File!=='function' || !HTMLCanvasElement.prototype.toBlob) return;
+    var go=function(){ drawShareCard(r,serial); };
+    // The pixel font must be loaded before the canvas can draw with it.
+    if(document.fonts && document.fonts.load) document.fonts.load("16px 'Press Start 2P'").then(go,go);
+    else go();
+  }
+
+  /* ---------------- daily top ---------------- */
+  // Everyone plays the same DAILY pieces, so each player's best score of the day goes on a shared list.
+  // A player is a random id kept on this device plus a name they pick; the list only shows names.
+  var NAME_RE=/^[A-Z0-9А-ЯЁ][A-Z0-9А-ЯЁ _.-]{0,9}$/;
+  function randomHex(bytes){
+    return Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(bytes)), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+  }
+  var playerId=readStore('pocket-tetris-player');
+  if(!/^[0-9a-f]{16}$/.test(playerId||'')){ playerId=randomHex(8); writeStore('pocket-tetris-player', playerId); }
+  var playerName=readStore('pocket-tetris-name')||'';
+  if(!NAME_RE.test(playerName)) playerName='';
+  // null while closed; otherwise 'loading', 'list', 'name' or 'error'.
+  var topView=null, topData=null, topSerial=0;
+  function topOpen(){ return topView!==null; }
+
+  function submitDaily(day,score){
+    return api('/daily', {method:'POST', headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({pid:playerId, name:playerName, day:day, score:score})});
+  }
+  // After a DAILY game: send today's best and show the player's place under the result.
+  function sendDailyResult(r,day,score){
+    if(!playerName || score<1) return;
+    submitDaily(day,score).then(function(res){
+      if(lastResult!==r || gameState!=='gameover') return;
+      r.rank=res.rank; r.players=res.players;
+      renderShareCard(r);
+      var line='PLACE '+res.rank+' OF '+res.players;
+      mainOverlay[1]=(mainOverlay[1] ? mainOverlay[1]+'\n' : '')+line;
+      if(!overlay.hidden && !menuEl.hidden) overlaySub.textContent=mainOverlay[1];
+    }, function(){});
+  }
+
+  function topRow(rank,name,score,me){
+    var el=document.createElement('div');
+    el.textContent=(rank ? String(rank) : '').padStart(3,' ')+' '+name.padEnd(10,' ')+' '+(score==='' ? '' : fmtScore(score)).padStart(10,' ');
+    if(me) el.className='me';
+    topList.appendChild(el);
+  }
+  function renderTop(){
+    overlayTitle.textContent='DAILY '+dayLabel();
+    overlaySub.textContent=''; overlayStats.textContent='';
+    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true; battlePanel.hidden=true;
+    topPanel.hidden=false;
+    overlay.hidden=false;
+    topList.textContent='';
+    nameInput.hidden = topView!=='name';
+    topMain.hidden = topView==='loading';
+    topName.hidden = topView!=='list' || !playerName;
+    topBack.textContent = topView==='loading' ? 'CANCEL' : 'BACK';
+    if(topView==='loading'){
+      topText.textContent='ЗАГРУЖАЕМ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ';
+    } else if(topView==='error'){
+      topText.textContent='НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ';
+      topMain.textContent='RETRY';
+    } else if(topView==='name'){
+      topText.textContent='ИМЯ ДЛЯ ТАБЛИЦЫ РЕКОРДОВ\nДО 10 БУКВ И ЦИФР';
+      topMain.textContent='SAVE';
+    } else {
+      var d=topData;
+      topText.textContent = !d.players ? 'СЕГОДНЯ ЕЩЁ НИКТО НЕ ИГРАЛ.\nБУДЬ ПЕРВЫМ!'
+        : 'ИГРОКОВ СЕГОДНЯ: '+d.players+(d.me ? '' : '\nСЫГРАЙ, ЧТОБЫ ПОПАСТЬ В СПИСОК');
+      d.top.forEach(function(e,i){ topRow(i+1, e.name, e.score, e.me); });
+      if(d.me && d.me.rank>d.top.length){ topRow(0,'   ...','',false); topRow(d.me.rank, playerName, d.me.score, true); }
+      topMain.textContent='PLAY';
+    }
+  }
+
+  function openTop(){
+    if(!playerName){ askName(); return; }
+    loadTop();
+  }
+  function askName(){
+    topView='name';
+    renderTop();
+    nameInput.value=playerName;
+    setTimeout(function(){ nameInput.focus(); },50);
+  }
+  function loadTop(){
+    var serial=++topSerial;
+    topView='loading';
+    renderTop();
+    refreshDaily();
+    var day=dailyDay;
+    // Today's best goes up first, so a game played before picking a name (or offline) still counts.
+    var sent = best.daily>0 ? submitDaily(day,best.daily).catch(function(){}) : Promise.resolve();
+    sent.then(function(){ return api('/daily/'+day+'?pid='+playerId); }).then(function(d){
+      if(serial!==topSerial) return;
+      topData=d; topView='list'; renderTop();
+    }).catch(function(){
+      if(serial!==topSerial) return;
+      topView='error'; renderTop();
+    });
+  }
+  function saveName(){
+    var n=nameInput.value.trim().replace(/\s+/g,' ').toUpperCase();
+    if(!NAME_RE.test(n)){ topText.textContent='ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ'; return; }
+    playerName=n;
+    writeStore('pocket-tetris-name', n);
+    nameInput.blur();
+    loadTop();
+  }
+  function closeTop(){
+    topSerial++;
+    topView=null;
+    nameInput.blur();
+    topPanel.hidden=true;
+    if(mainOverlay) showOverlay.apply(null, mainOverlay);
+  }
+  function topGo(){
+    if(topView==='name') saveName();
+    else if(topView==='error') loadTop();
+    else if(topView==='list'){
+      closeTop();
+      modeIdx=MODES.map(function(m){ return m.id; }).indexOf('daily');
+      selectionChanged();
+      startGame();
+    }
+  }
+  function topInput(cmd){
+    if(cmd==='go' && !topMain.hidden) topGo();
+    else if(cmd==='back') closeTop();
+  }
+  topBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) openTop(); });
+  topMain.addEventListener('click', topGo);
+  topName.addEventListener('click', askName);
+  topBack.addEventListener('click', closeTop);
+  nameInput.addEventListener('input', function(){
+    var v=nameInput.value.toUpperCase().replace(/[^A-Z0-9А-ЯЁ _.-]/g,'').slice(0,10);
+    if(v!==nameInput.value) nameInput.value=v;
+  });
+
   /* ---------------- online battle ---------------- */
   // Two friends play the same pieces (the server hands both the same seed). Clearing 2+ lines sends
   // garbage rows to the rival; whoever tops out first loses. The server only relays messages.
-  var BATTLE_URL = location.hostname==='127.0.0.1' ? 'http://127.0.0.1:8094' : 'https://pocket-tetris-battle.onrender.com';
+  var SERVER_URL = location.hostname==='127.0.0.1' ? 'http://127.0.0.1:8094' : 'https://pocket-tetris-battle.onrender.com';
   var BATTLE_OPTIONS=['NEW ROOM','JOIN ROOM'];
   var ATTACK=[0,0,1,2,4];
+  // Time can't stop in a match: garbage only rises when a piece locks, so a paused player could never lose.
+  // A pause resumes by itself, a player who leaves the app for too long loses, and a rival who goes
+  // silent (no board updates, which are also sent as a heartbeat) loses too.
+  var BATTLE_PAUSE_MS=5000, BATTLE_AWAY_MS=15000, BATTLE_SILENCE_MS=25000, BATTLE_HEARTBEAT_MS=5000;
   var battleOpt=0, battleSeed=1, rivalBoard='';
-  var battle={stage:'idle', code:'', es:null, players:0, pending:0, meReady:false, peerReady:false, title:'', reason:''};
-  var pid=Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(8)), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+  var battle={stage:'idle', code:'', es:null, players:0, pending:0, meReady:false, peerReady:false, title:'', reason:'',
+    heardAt:0, sentAt:0, pausedAt:0, hiddenAt:0};
+  var pid=randomHex(8);
   var battlePanel=$('battlePanel'), battleText=$('battleText'), battleMain=$('battleMain'), battleBack=$('battleBack'), roomInput=$('roomInput');
   var rivalPanel=$('rivalPanel'), rivalCv=$('rival'), rctx=rivalCv.getContext('2d');
 
   function battleUiOpen(){ return ['connecting','code','lobby','over'].indexOf(battle.stage)!==-1; }
   function battleRunning(){ return mode==='battle' && ['playing','clearing','paused','countdown'].indexOf(gameState)!==-1; }
-  function wakeServer(){ fetch(BATTLE_URL+'/health',{cache:'no-store'}).catch(function(){}); }
+  function wakeServer(){ fetch(SERVER_URL+'/health',{cache:'no-store'}).catch(function(){}); }
   function api(path,opts){
-    return fetch(BATTLE_URL+path, opts||{cache:'no-store'}).then(function(r){
+    return fetch(SERVER_URL+path, opts||{cache:'no-store'}).then(function(r){
       if(!r.ok) throw r.status;
       return r.status===204 ? null : r.json();
     });
@@ -862,7 +1120,8 @@
   // text/plain keeps these simple CORS requests, so there is no extra preflight round trip.
   function sendMsg(type,data){
     if(!battle.code) return;
-    fetch(BATTLE_URL+'/rooms/'+battle.code+'/msg', {method:'POST', headers:{'Content-Type':'text/plain'},
+    battle.sentAt=performance.now();
+    fetch(SERVER_URL+'/rooms/'+battle.code+'/msg', {method:'POST', headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({pid:pid, type:type, data:data})}).catch(function(){});
   }
   function boardString(){
@@ -888,7 +1147,7 @@
     overlayTitle.textContent=title;
     overlaySub.textContent='';
     overlayStats.textContent='';
-    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true;
+    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true; topPanel.hidden=true;
     battlePanel.hidden=false;
     battleText.textContent=text;
     battleMain.hidden=!main; battleMain.textContent=main||'';
@@ -953,7 +1212,7 @@
 
   function openRoom(code){
     battle.code=code; battle.meReady=false; battle.peerReady=false; battle.players=0;
-    var es=new EventSource(BATTLE_URL+'/rooms/'+code+'/events?pid='+pid);
+    var es=new EventSource(SERVER_URL+'/rooms/'+code+'/events?pid='+pid);
     battle.es=es;
     function data(e){ try{ return JSON.parse(e.data); }catch(err){ return {}; } }
     es.addEventListener('joined', function(e){
@@ -1043,15 +1302,48 @@
       showToast('GO!',600);
       battle.stage='match';
       battle.pending=0;
+      battle.heardAt=performance.now();
       startGame();
       sendBoard();
     },800);
   }
 
+  // Runs every frame of a match: ends a pause that ran out, sends the heartbeat, and notices a rival who went silent.
+  function battleTick(now){
+    if(battle.stage!=='match' || !battleRunning()) return;
+    if(gameState==='paused'){
+      var left=BATTLE_PAUSE_MS-(now-battle.pausedAt);
+      if(left<=0){ togglePause(); showToast('GO!',600); }
+      else overlaySub.textContent='ИГРА ПРОДОЛЖИТСЯ\nЧЕРЕЗ '+Math.ceil(left/1000);
+    }
+    if(now-battle.sentAt>=BATTLE_HEARTBEAT_MS) sendBoard();
+    if(now-battle.heardAt>=BATTLE_SILENCE_MS){
+      // Tell the rival too: if only their sending broke, they would otherwise wait for us and win by silence as well.
+      sendMsg('won');
+      battleResult(true,'СОПЕРНИК ПРОПАЛ');
+    }
+  }
+
+  function battleVisibility(hidden){
+    if(!battleRunning()) return;
+    var now=performance.now();
+    if(hidden){ battle.hiddenAt=now; return; }
+    var away = battle.hiddenAt ? now-battle.hiddenAt : 0;
+    battle.hiddenAt=0;
+    if(battle.stage!=='match') return;
+    if(away>=BATTLE_AWAY_MS){ battleResult(false,'ТЫ ДОЛГО БЫЛ\nВНЕ ИГРЫ'); return; }
+    // While the app was in the background the rival's messages may not have arrived, so don't count that as silence;
+    // and the pause restarts, so the player gets a moment to look at the board again.
+    battle.heardAt=now;
+    battle.pausedAt=now;
+  }
+
   function onBattleMsg(type,data){
+    battle.heardAt=performance.now();
     if(type==='board'){ rivalBoard=data; drawRival(); }
     else if(type==='attack' && battleRunning()){ battle.pending+=data; updateHud(); showToast('INCOMING '+data,700); }
     else if(type==='lost' && battleRunning()){ battleResult(true,'СОПЕРНИК ПРОИГРАЛ'); }
+    else if(type==='won' && battleRunning()){ battleResult(false,'ТВОЯ СВЯЗЬ ПРОПАЛА'); }
   }
 
   function battleResult(won,reason){
@@ -1080,6 +1372,7 @@
       gesture=null;
       pauseRow=0;
       restartBtn.hidden = mode==='battle';
+      battle.pausedAt=performance.now();
       renderPauseMenu();
       showOverlay('PAUSE','',statsLine(),'pause');
     } else if(gameState==='paused'){
@@ -1158,6 +1451,7 @@
     colorHintEl.textContent = open ? 'ОТКРЫТО '+unlockedSkins.length+' ИЗ '+SKINS.length : sk.how;
     menuRows[2].classList.toggle('locked', !open);
     for(var i=0;i<menuRows.length;i++) menuRows[i].classList.toggle('focus', menuRow===i);
+    renderShareRow();
   }
 
   function visibleRows(){ return menuRows[1].hidden ? [0,2] : [0,1,2]; }
@@ -1174,8 +1468,9 @@
     piece=null; nextKey=null; heldKey=null;
     if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
     draw(); drawNext(); drawHold();
-    // The free battle server sleeps when idle; start waking it as soon as BATTLE is picked.
-    if(mode==='battle'){ rivalBoard=''; drawRival(); wakeServer(); }
+    // The free server sleeps when idle; start waking it as soon as BATTLE or DAILY is picked.
+    if(mode==='battle'){ rivalBoard=''; drawRival(); }
+    if(mode==='battle' || mode==='daily') wakeServer();
     updateHud();
   }
 
@@ -1253,6 +1548,7 @@
   var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
   var BUTTON_BATTLE={cw:'go', start:'go', ccw:'back'};
   function doAction(action){
+    if(topOpen()){ topInput(BUTTON_BATTLE[action]); return; }
     if(battleUiOpen()){ battleInput(BUTTON_BATTLE[action]); return; }
     if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
     if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
@@ -1297,7 +1593,7 @@
   });
 
   overlay.addEventListener('pointerup', function(e){
-    if(e.target.closest('.menu') || battleUiOpen()) return;
+    if(e.target.closest('.menu') || battleUiOpen() || topOpen()) return;
     if(gameState==='paused') togglePause();
     else if(inMenu()) menuInput('go');
   });
@@ -1319,6 +1615,14 @@
   var KEY_PAUSE={ArrowUp:'up', ArrowDown:'down', Enter:'go', Space:'go', KeyP:'resume', Escape:'resume'};
   window.addEventListener('keydown',function(e){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(topOpen()){
+      // Letters go into the name field untouched; only Enter and Escape act on the daily top.
+      var tcmd = e.code==='Enter' ? 'go' : e.code==='Escape' ? 'back' : null;
+      if(!tcmd) return;
+      e.preventDefault();
+      if(!e.repeat) topInput(tcmd);
+      return;
+    }
     if(battleUiOpen()){
       // Digits go into the room code field untouched; only Enter and Escape act on the lobby.
       var bcmd = e.code==='Enter' ? 'go' : e.code==='Escape' ? 'back' : null;
@@ -1405,6 +1709,7 @@
 
   window.addEventListener('blur', stopAllRepeats);
   document.addEventListener('visibilitychange',function(){
+    battleVisibility(document.hidden);
     if(!document.hidden) return;
     stopAllRepeats();
     if(gameState==='playing') togglePause();
@@ -1419,6 +1724,7 @@
       elapsed+=dt;
       if(mode==='sprint' || onTheClock()) updateTimeHud();
     }
+    battleTick(performance.now());
     if(gameState==='playing' && onTheClock() && elapsed>=timeLimit()){
       endGame('timeup');
     } else if(gameState==='playing' && mode==='puzzle'){
@@ -1487,7 +1793,7 @@
     selectionChanged();
     renderMenu();
     battleJoin(linkRoom);
-  } else if(mode==='battle'){
+  } else if(mode==='battle' || mode==='daily'){
     wakeServer();
   }
   fit();

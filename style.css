@@ -362,6 +362,25 @@ body{
   user-select:text;
 }
 .roomin:focus{ outline:2px solid var(--lcd-dark); outline-offset:2px; }
+.namein{
+  width:200px;
+  font-size:12px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+/* Daily top: fixed-width rows (the pixel font is monospaced), the player's own row inverted. */
+.toplist{
+  font-size:8px;
+  line-height:1;
+  text-align:left;
+  white-space:pre;
+}
+.toplist:empty{ display:none; }
+.toplist div{ padding:3px 4px; }
+.toplist .me{
+  background: var(--lcd-dark);
+  color: var(--lcd-bg);
+}
 .mitem.share{
   border:2px solid var(--lcd-dark);
   margin-bottom:6px;

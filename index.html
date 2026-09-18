@@ -76,6 +76,7 @@
             <div class="small" id="overlaySub"></div>
             <div class="menu" id="shareRow" hidden>
               <button type="button" class="mrow mitem share" id="shareBtn">SHARE RESULT</button>
+              <button type="button" class="mrow mitem share" id="topBtn">DAILY TOP</button>
             </div>
             <div class="menu" id="menu">
               <div class="mcap">РЕЖИМ</div>
@@ -109,6 +110,14 @@
               <input type="text" id="roomInput" class="roomin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Код комнаты" hidden>
               <button type="button" class="mrow mitem share" id="battleMain">INVITE FRIEND</button>
               <button type="button" class="mrow mitem" id="battleBack">LEAVE</button>
+            </div>
+            <div class="menu" id="topPanel" hidden>
+              <div class="small" id="topText"></div>
+              <div class="toplist" id="topList"></div>
+              <input type="text" id="nameInput" class="roomin namein" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Имя в таблице рекордов" hidden>
+              <button type="button" class="mrow mitem share" id="topMain">PLAY</button>
+              <button type="button" class="mrow mitem" id="topName">CHANGE NAME</button>
+              <button type="button" class="mrow mitem" id="topBack">BACK</button>
             </div>
             <div class="small blink" id="overlayPrompt">PRESS START</div>
             <div class="stats" id="overlayStats"></div>
