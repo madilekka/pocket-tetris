@@ -59,7 +59,8 @@
     if(mode==='puzzle') return puzzleQueue.length ? puzzleQueue.shift() : null;
     return nextFromBag();
   }
-  var SPRINT_LINES=40, SPRINT_LEVEL=5, DAILY_MINUTES=5;
+  // 40 LINES starts at level 2 and, like MARATHON, speeds up every 10 lines (level 5 for the last ten).
+  var SPRINT_LINES=40, SPRINT_LEVEL=2, DAILY_MINUTES=5;
   var DURATIONS=[5,7,10];
   // Only MARATHON lets the player pick a level; the other modes have fixed rules so friends' records are comparable.
   // Timed games start at level 0 and level up every N lines, N = the game's minutes, so difficulty peaks near the end.
@@ -90,7 +91,7 @@
     var k=dayKey();
     if(k===dailyDay) return;
     dailyDay=k;
-    BEST_KEYS.daily='pocket-tetris-daily5-'+k;
+    BEST_KEYS.daily='pocket-tetris-daily-rec2-'+k;
     best.daily=parseInt(readStore(BEST_KEYS.daily)||'0',10)||0;
     try{
       for(var i=localStorage.length-1;i>=0;i--){
@@ -129,9 +130,11 @@
 
   var modeIdx=0, mode='marathon', startLevel=0, durIdx=0, menuRow=0, menuLockUntil=0;
   var best={marathon:0, sprint:0, ta5:0, ta7:0, ta10:0, daily:0};
-  // Versioned sprint key: sprint records set back when its level was selectable are not comparable.
-  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint-v2',
-    ta5:'pocket-tetris-best-ta5', ta7:'pocket-tetris-best-ta7', ta10:'pocket-tetris-best-ta10'};
+  // Records start over whenever a rule change makes old scores incomparable: rec2 began with the modern speed curve.
+  var BEST_KEYS={marathon:'pocket-tetris-rec2-marathon', sprint:'pocket-tetris-rec2-sprint',
+    ta5:'pocket-tetris-rec2-ta5', ta7:'pocket-tetris-rec2-ta7', ta10:'pocket-tetris-rec2-ta10'};
+  var OLD_RECORD_KEYS=['pocket-tetris-high','pocket-tetris-best-sprint','pocket-tetris-best-sprint-v2',
+    'pocket-tetris-best-ta5','pocket-tetris-best-ta7','pocket-tetris-best-ta10'];
 
   /* ---------------- pieces ---------------- */
   var SHAPES={
@@ -300,7 +303,7 @@
       attack-=cancel;
       if(attack>0){ sendMsg('attack', Math.min(10,attack)); msg+='\nSENT '+attack; }
     }
-    if(mode!=='sprint' && mode!=='puzzle' && mode!=='battle'){
+    if(mode!=='puzzle' && mode!=='battle'){
       var newLevel=baseLevel()+Math.floor(lines/linesPerLevel());
       leveledUp=newLevel>level;
       if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
@@ -386,7 +389,11 @@
     }
   }
 
-  function speedForLevel(l){ return Math.max(1000 - l*70, 90); }
+  // Modern (guideline) gravity: seconds per row = (0.8 - 0.007*level)^level. Slow at first, then steeper each level:
+  // level 0 takes 1 s a row, 5 about 0.26 s, 10 about 0.04 s, and from about 15 a piece lands the moment it appears.
+  // Gravity can't get harsher than that, so from level 20 the time a landed piece waits before locking shrinks instead.
+  function speedForLevel(l){ l=Math.min(l,30); return Math.pow(0.8-l*0.007, l)*1000; }
+  function lockDelayFor(l){ return Math.max(150, LOCK_DELAY-Math.max(0,l-19)*10); }
 
   /* ---------------- HUD / storage ---------------- */
   function setNum(el,v){
@@ -470,6 +477,7 @@
   }
   function readStore(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
   function writeStore(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+  function removeStore(key){ try{ localStorage.removeItem(key); }catch(e){} }
   function saveBest(){ for(var k in BEST_KEYS) writeStore(BEST_KEYS[k], String(best[k])); }
 
   /* ---------------- drawing ---------------- */
@@ -1736,13 +1744,15 @@
         if(lv>level){ level=lv; applyPalette(Math.floor(level/5)); updateHud(); sfxLevel(); }
       }
       dropAcc+=dt;
-      if(dropAcc>=speedForLevel(level)){
-        dropAcc=0;
-        tryMove(0,1);
+      // Fast levels move a piece more than one row per frame.
+      var rowMs=speedForLevel(level);
+      while(dropAcc>=rowMs){
+        dropAcc-=rowMs;
+        if(!tryMove(0,1)){ dropAcc=0; break; }
       }
       if(collides(piece,px,py+1)){
         lockTimer+=dt;
-        if(lockTimer>=LOCK_DELAY) lock();
+        if(lockTimer>=lockDelayFor(level)) lock();
       } else {
         lockTimer=0;
       }
@@ -1752,6 +1762,7 @@
   }
 
   /* ---------------- boot ---------------- */
+  OLD_RECORD_KEYS.forEach(removeStore);
   refreshDaily();
   for(var bk in BEST_KEYS) best[bk]=parseInt(readStore(BEST_KEYS[bk])||'0',10)||0;
   modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
