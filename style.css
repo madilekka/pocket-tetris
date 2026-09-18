@@ -252,8 +252,8 @@ body{
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:10px;
-  padding:14px;
+  gap:8px;
+  padding:12px;
   text-align:center;
   font-family: var(--pix);
   color: var(--lcd-dark);
@@ -272,14 +272,46 @@ body{
   font-size:9px;
 }
 .mrow{
+  position:relative;
   display:flex;
   align-items:center;
-  border-radius:2px;
 }
-.mrow.focus{
-  background: var(--lcd-dark);
-  color: var(--lcd-bg);
+/* The selected row gets a blinking arrow cursor, like old console menus: it marks the row the D-pad controls. */
+.mrow.focus::before{
+  content:"";
+  position:absolute;
+  left:-12px; top:50%;
+  margin-top:-5px;
+  border-left:7px solid currentColor;
+  border-top:5px solid transparent;
+  border-bottom:5px solid transparent;
+  animation: blink 1s steps(1) infinite;
 }
+@media (prefers-reduced-motion: reduce){ .mrow.focus::before{ animation:none; } }
+.mcap{
+  font-size:6.5px;
+  opacity:.6;
+  margin-top:3px;
+  letter-spacing:.5px;
+}
+.lock{
+  display:none;
+  position:relative;
+  top:1px;
+  width:8px; height:6px;
+  margin-left:7px;
+  background: currentColor;
+}
+.lock::before{
+  content:"";
+  position:absolute;
+  left:1px; top:-5px;
+  width:4px; height:4px;
+  border:1px solid currentColor;
+  border-bottom:none;
+  border-radius:3px 3px 0 0;
+}
+.mrow.locked .lock{ display:inline-block; }
 .mval{
   min-width:112px;
   text-align:center;
@@ -308,7 +340,7 @@ body{
   font-size:9px;
   cursor:pointer;
 }
-.mrow.locked .mval{ opacity:.45; }
+.mrow.locked .mval{ opacity:.55; }
 .mitem.share{
   border:2px solid var(--lcd-dark);
   margin-bottom:6px;
@@ -316,7 +348,6 @@ body{
 .mhint{
   font-size:6.5px;
   opacity:.75;
-  margin-bottom:4px;
 }
 
 .toast{

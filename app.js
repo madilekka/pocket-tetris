@@ -11,7 +11,7 @@
   var timePanel=$('timePanel'), timeVal=$('timeVal'), lvBar=$('lvBar'), lvLeft=$('lvLeft');
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel'), $('rowColor')];
-  var colorValEl=$('colorVal'), colorHintEl=$('colorHint');
+  var colorValEl=$('colorVal'), colorHintEl=$('colorHint'), optCapEl=$('optCap');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
@@ -23,9 +23,9 @@
 
   /* ---------------- modes ---------------- */
   var MODES=[
-    {id:'marathon', name:'MARATHON', hint:'ENDLESS'},
-    {id:'sprint', name:'40 LINES', hint:'BEAT THE CLOCK'},
-    {id:'ultra', name:'TIME ATTACK', hint:'MAX SCORE'},
+    {id:'marathon', name:'MARATHON', hint:'БЕСКОНЕЧНАЯ ИГРА'},
+    {id:'sprint', name:'40 LINES', hint:'СОБЕРИ 40 ЛИНИЙ НА ВРЕМЯ'},
+    {id:'ultra', name:'TIME ATTACK', hint:'МАКСИМУМ ОЧКОВ ЗА ВРЕМЯ'},
     {id:'daily', name:'DAILY', hint:''}
   ];
   var SPRINT_LINES=40, SPRINT_LEVEL=5, DAILY_MINUTES=5;
@@ -79,7 +79,8 @@
     {id:'black', name:'BLACK', how:'ОТКРОЕТСЯ ЗА 100 ЛИНИЙ В MARATHON', c:['#2f2f35','#4b4b54','#18181c','#c9c9d1','#e0474a','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#45454d','#25252a','#d6d6de']},
     {id:'gold', name:'GOLD', how:'ОТКРОЕТСЯ ЗА 50 000 ОЧКОВ', c:['#c8a24a','#ebd18b','#8a6c26','#2e2206','#7a1f1f','#b54848','#8e2a2a','#611b1b','#401111','#f3dca0','#b08d3c','#7a6020','#2e2206']}
   ];
-  var unlockedSkins=['classic'], skinIdx=0;
+  // skinIdx is what the menu shows (and previews on the console); appliedSkin is the last unlocked choice.
+  var unlockedSkins=['classic'], skinIdx=0, appliedSkin='classic';
   function skinIndex(id){ for(var i=0;i<SKINS.length;i++) if(SKINS[i].id===id) return i; return -1; }
   function isUnlocked(id){ return unlockedSkins.indexOf(id)!==-1; }
   function applySkin(id){
@@ -630,6 +631,7 @@
   }
 
   function startGame(){
+    if(!isUnlocked(SKINS[skinIdx].id)){ skinIdx=skinIndex(appliedSkin); applySkin(appliedSkin); }
     ensureAudio();
     resetBoard();
     mode=MODES[modeIdx].id;
@@ -684,7 +686,7 @@
     draw();
     powerLed.style.opacity='.35';
     var recordText = mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
-    showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, statsLine(), 'main');
+    showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, '', 'main');
   }
 
   /* ---------------- share result ---------------- */
@@ -767,12 +769,14 @@
     var m=MODES[modeIdx];
     refreshDaily();
     modeValEl.textContent=m.name;
-    modeHintEl.textContent = m.id==='daily' ? 'TODAY '+dayLabel() : m.hint;
+    modeHintEl.textContent = m.id==='daily' ? dayLabel()+' - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ' : m.hint;
     // The second row is the start level in MARATHON and the game length in TIME ATTACK.
     var hasOption = m.id==='marathon' || m.id==='ultra';
     levelSelEl.textContent = m.id==='ultra' ? DURATIONS[durIdx]+' MINUTES' : 'LEVEL '+startLevel;
+    optCapEl.textContent = m.id==='ultra' ? 'ДЛИТЕЛЬНОСТЬ' : 'СТАРТОВЫЙ УРОВЕНЬ';
     if(!hasOption && menuRow===1) menuRow=0;
     menuRows[1].hidden=!hasOption;
+    optCapEl.hidden=!hasOption;
     var sk=SKINS[skinIdx], open=isUnlocked(sk.id);
     colorValEl.textContent=sk.name;
     colorHintEl.textContent = open ? 'ОТКРЫТО '+unlockedSkins.length+' ИЗ '+SKINS.length : sk.how;
@@ -803,7 +807,9 @@
       if(menuRow===2){
         skinIdx=(skinIdx+d+SKINS.length)%SKINS.length;
         var sk=SKINS[skinIdx];
-        if(isUnlocked(sk.id)){ applySkin(sk.id); writeStore('pocket-tetris-color', sk.id); }
+        // Every color is previewed on the console so it's obvious what this row changes; only unlocked ones are kept.
+        applySkin(sk.id);
+        if(isUnlocked(sk.id)){ appliedSkin=sk.id; writeStore('pocket-tetris-color', sk.id); }
       } else {
         if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
         else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
@@ -1044,7 +1050,8 @@
   }catch(e){}
   var savedSkin=readStore('pocket-tetris-color');
   skinIdx = (savedSkin && isUnlocked(savedSkin)) ? skinIndex(savedSkin) : 0;
-  applySkin(SKINS[skinIdx].id);
+  appliedSkin=SKINS[skinIdx].id;
+  applySkin(appliedSkin);
   resetBoard();
   applyPalette(Math.floor(level/5));
   updateHud();
