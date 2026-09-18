@@ -21,6 +21,10 @@ const TOP_SIZE = 10;
 const MAX_SCORE = 10000000;
 const DAY_KEEP_S = 3 * 24 * 3600;
 const SUBMITS_PER_WINDOW = 30, SUBMIT_WINDOW_MS = 10 * 60 * 1000;
+// The per-address limit trusts X-Forwarded-For, which a client can fake, so there are also caps for the whole server.
+const ALL_SUBMITS_PER_WINDOW = 600, MAX_PLAYERS_PER_DAY = 5000;
+// "won" claims the rival went silent; it's only relayed if the rival really hasn't posted for this long.
+const WON_QUIET_MS = 15 * 1000;
 
 // code -> { players: [{ pid, res, ready }], touched, emptySince }
 const rooms = new Map();
@@ -110,7 +114,9 @@ function handleMessage(res, room, msg) {
   if (!player) return reply(res, 403);
   if (!MESSAGES[msg.type](msg.data)) return reply(res, 400);
   room.touched = Date.now();
+  player.postedAt = Date.now();
   const others = room.players.filter(p => p !== player);
+  if (msg.type === 'won' && others.some(p => Date.now() - (p.postedAt || 0) < WON_QUIET_MS)) return reply(res, 409);
 
   if (msg.type === 'ready') {
     player.ready = true;
@@ -152,6 +158,7 @@ function memoryStore() {
     async submit(day, pid, name, score) {
       if (!days.has(day)) days.set(day, new Map());
       const players = days.get(day), had = players.get(pid), value = rankValue(score);
+      if (!had && players.size >= MAX_PLAYERS_PER_DAY) return null;
       players.set(pid, { name, value: had && had.value >= value ? had.value : value });
       for (const d of days.keys()) if (!validDay(d)) days.delete(d);
       const all = list(day);
@@ -186,6 +193,8 @@ function redisStore() {
   return {
     async submit(day, pid, name, score) {
       const [z, n] = keys(day);
+      const [had, count] = await run([['ZSCORE', z, pid], ['ZCARD', z]]);
+      if (had === null && count >= MAX_PLAYERS_PER_DAY) return null;
       const r = await run([
         ['ZADD', z, 'GT', String(rankValue(score)), pid], ['HSET', n, pid, name],
         ['EXPIRE', z, String(DAY_KEEP_S)], ['EXPIRE', n, String(DAY_KEEP_S)],
@@ -212,11 +221,14 @@ function redisStore() {
 
 const store = REDIS_URL && REDIS_TOKEN ? redisStore() : memoryStore();
 
-// Each address may submit a limited number of scores per window.
+// Each address may submit a limited number of scores per window, and so may the whole server.
 const submits = new Map();
+let allSubmits = { since: 0, count: 0 };
 function allowSubmit(req) {
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   const now = Date.now();
+  if (now - allSubmits.since > SUBMIT_WINDOW_MS) allSubmits = { since: now, count: 0 };
+  if (++allSubmits.count > ALL_SUBMITS_PER_WINDOW) return false;
   let s = submits.get(ip);
   if (!s || now - s.since > SUBMIT_WINDOW_MS) { s = { since: now, count: 0 }; submits.set(ip, s); }
   return ++s.count <= SUBMITS_PER_WINDOW;
@@ -229,7 +241,7 @@ function handleSubmit(req, res, msg) {
   if (!Number.isInteger(msg.score) || msg.score < 1 || msg.score > MAX_SCORE) return reply(res, 400);
   if (!allowSubmit(req)) return reply(res, 429);
   store.submit(msg.day, msg.pid, name, msg.score)
-    .then(r => reply(res, 200, r))
+    .then(r => r ? reply(res, 200, r) : reply(res, 429, { error: 'full' }))
     .catch(e => { console.error(e.message); reply(res, 503); });
 }
 
