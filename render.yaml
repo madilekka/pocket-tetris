@@ -1,9 +1,0 @@
-services:
-  # Имя определяет адрес: https://pocket-tetris.onrender.com (если занято, Render добавит суффикс)
-  - type: web
-    name: pocket-tetris
-    runtime: static
-    # Собирать нечего — игра это один index.html, но Render ждёт какую-то команду сборки
-    buildCommand: echo "no build step"
-    staticPublishPath: ./
-    autoDeploy: true
