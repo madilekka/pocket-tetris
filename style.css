@@ -368,6 +368,11 @@ body{
   letter-spacing:2px;
   text-transform:uppercase;
 }
+.namein.codein{
+  width:230px;
+  font-size:9px;
+  letter-spacing:1px;
+}
 /* Daily top: fixed-width rows (the pixel font is monospaced), the player's own row inverted. */
 .toplist{
   font-size:8px;

@@ -1,9 +1,10 @@
-const CACHE = 'pocket-tetris-v4';
+const CACHE = 'pocket-tetris-v5';
 const CORE = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './server/engine.js',
   './puzzles.js',
   './manifest.json',
   './icons/icon-192.png',

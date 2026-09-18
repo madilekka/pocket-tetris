@@ -12,15 +12,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const SHAPES = {
-  I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], O: [[1,1],[1,1]],
-  T: [[0,1,0],[1,1,1],[0,0,0]], S: [[0,1,1],[1,1,0],[0,0,0]], Z: [[1,1,0],[0,1,1],[0,0,0]],
-  J: [[1,0,0],[1,1,1],[0,0,0]], L: [[0,0,1],[1,1,1],[0,0,0]]
-};
-const KEYS = Object.keys(SHAPES);
+// Pieces and wall kicks come from the game's own rules, so the solver can't drift from what the game allows.
+const Engine = require('../server/engine.js');
+const SHAPES = Engine.SHAPES;
+const KEYS = Engine.KEYS;
 const FULL = 1023, COLS = 10, ROWS = 20;
-// Same order as KICKS in app.js: a turn takes the first of these shifts that fits.
-const KICKS = [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1]];
+const KICKS = Engine.KICKS;
 
 function rot(m) { const n = m.length, r = m.map(() => Array(n).fill(0)); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) r[j][n - 1 - i] = m[i][j]; return r; }
 

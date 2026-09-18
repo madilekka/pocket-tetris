@@ -1,6 +1,8 @@
 (function(){
   "use strict";
-  var COLS=10, ROWS=20;
+  // The rules live in server/engine.js, which the server also runs to replay DAILY games.
+  var Engine=window.PocketEngine;
+  var COLS=Engine.COLS, ROWS=Engine.ROWS;
   var CELL=16;
   function $(id){ return document.getElementById(id); }
   var boardCv=$('board'), bctx=boardCv.getContext('2d');
@@ -17,7 +19,7 @@
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn'), topBtn=$('topBtn');
   var topPanel=$('topPanel'), topText=$('topText'), topList=$('topList'), nameInput=$('nameInput');
-  var topMain=$('topMain'), topName=$('topName'), topBack=$('topBack');
+  var topMain=$('topMain'), topAlt=$('topAlt'), topBack=$('topBack');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -42,23 +44,8 @@
   var puzzleIdx=0, puzzleQueue=[], solvedPuzzles=[];
   function puzzleName(i){ return (Math.floor(i/8)+1)+'-'+(i%8+1); }
   function puzzleUnlocked(i){ return i===0 || solvedPuzzles.indexOf(i-1)!==-1; }
-  function puzzleLayout(i){
-    var b=[], rows=PUZZLES[i].rows;
-    for(var r=0;r<ROWS;r++) b.push(new Array(COLS).fill(0));
-    for(var k=0;k<rows.length;k++){
-      for(var x=0;x<COLS;x++) b[ROWS-rows.length+k][x] = rows[k].charAt(x)==='#' ? 1 : 0;
-    }
-    return b;
-  }
+  function puzzleLayout(i){ return Engine.puzzleBoard(PUZZLES[i].rows); }
   function loadPuzzleBoard(i){ board=puzzleLayout(i); }
-  function boardEmpty(){
-    for(var r=0;r<ROWS;r++) for(var x=0;x<COLS;x++) if(board[r][x]) return false;
-    return true;
-  }
-  function nextPiece(){
-    if(mode==='puzzle') return puzzleQueue.length ? puzzleQueue.shift() : null;
-    return nextFromBag();
-  }
   // 40 LINES starts at level 2 and, like MARATHON, speeds up every 10 lines (level 5 for the last ten).
   var SPRINT_LINES=40, SPRINT_LEVEL=2, DAILY_MINUTES=5;
   var DURATIONS=[5,7,10];
@@ -77,16 +64,9 @@
   function dayParts(){ var t=new Date(Date.now()+5*3600000); return {y:t.getUTCFullYear(), m:t.getUTCMonth()+1, d:t.getUTCDate()}; }
   function dayKey(){ var p=dayParts(); return p.y*10000+p.m*100+p.d; }
   function dayLabel(){ var p=dayParts(); return (p.d<10?'0':'')+p.d+'.'+(p.m<10?'0':'')+p.m; }
-  function seededRandom(seed){
-    var a=seed>>>0;
-    return function(){
-      a=(a+0x6D2B79F5)>>>0;
-      var t=Math.imul(a^(a>>>15), a|1);
-      t^=t+Math.imul(t^(t>>>7), t|61);
-      return ((t^(t>>>14))>>>0)/4294967296;
-    };
-  }
-  var random=Math.random, dailyDay=0;
+  var dailyDay=0;
+  // Today's best DAILY game is kept as a recording of its key presses: the server replays it to count the score.
+  function dailyReplayKey(){ return BEST_KEYS.daily+'-replay'; }
   function refreshDaily(){
     var k=dayKey();
     if(k===dailyDay) return;
@@ -96,7 +76,7 @@
     try{
       for(var i=localStorage.length-1;i>=0;i--){
         var sk=localStorage.key(i);
-        if(sk && sk.indexOf('pocket-tetris-daily')===0 && sk!==BEST_KEYS.daily) localStorage.removeItem(sk);
+        if(sk && sk.indexOf('pocket-tetris-daily')===0 && sk.indexOf(BEST_KEYS.daily)!==0) localStorage.removeItem(sk);
       }
     }catch(e){}
   }
@@ -137,40 +117,8 @@
     'pocket-tetris-best-ta5','pocket-tetris-best-ta7','pocket-tetris-best-ta10'];
 
   /* ---------------- pieces ---------------- */
-  var SHAPES={
-    I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
-    O:[[1,1],[1,1]],
-    T:[[0,1,0],[1,1,1],[0,0,0]],
-    S:[[0,1,1],[1,1,0],[0,0,0]],
-    Z:[[1,1,0],[0,1,1],[0,0,0]],
-    J:[[1,0,0],[1,1,1],[0,0,0]],
-    L:[[0,0,1],[1,1,1],[0,0,0]]
-  };
-  var KEYS=Object.keys(SHAPES);
-
-  function emptyMatrix(n){
-    var m=[];
-    for(var i=0;i<n;i++){ m.push(new Array(n).fill(0)); }
-    return m;
-  }
-  function rotateCW(m){
-    var n=m.length, r=emptyMatrix(n);
-    for(var i=0;i<n;i++) for(var j=0;j<n;j++) r[j][n-1-i]=m[i][j];
-    return r;
-  }
-  function rotateCCW(m){
-    var n=m.length, r=emptyMatrix(n);
-    for(var i=0;i<n;i++) for(var j=0;j<n;j++) r[n-1-j][i]=m[i][j];
-    return r;
-  }
-
-  var bag=[];
-  function newBag(){
-    var b=KEYS.slice();
-    for(var i=b.length-1;i>0;i--){ var j=(random()*(i+1))|0; var t=b[i]; b[i]=b[j]; b[j]=t; }
-    return b;
-  }
-  function nextFromBag(){ if(bag.length===0) bag=newBag(); return bag.pop(); }
+  var SHAPES=Engine.SHAPES, KEYS=Engine.KEYS;
+  var CLEAR_NAMES=['','SINGLE','DOUBLE','TRIPLE','TETRIS'];
 
   /* ---------------- palettes ---------------- */
   var PALETTES=[
@@ -193,207 +141,70 @@
   }
 
   /* ---------------- state ---------------- */
+  // The running game is an engine object. These variables mirror it for drawing and the HUD (pull), and between
+  // games they hold what the menu shows behind it: an empty board or the chosen puzzle.
+  var game=null, tickAcc=0, shown={};
   var board=[], piece=null, pieceKey=null, nextKey=null, heldKey=null, px=0, py=0;
-  var score=0, lines=0, level=0, dropAcc=0, lockTimer=0, lastTs=null, elapsed=0;
-  var gameState='ready', holdUsed=false, combo=-1, backToBack=false;
-  var flashRows=null, pieceCounts={}, scale=1, pieceSerial=0;
-  // A grounded piece locks after a short fixed delay, not after a full gravity step (1 s at level 0).
-  var LOCK_DELAY=250, MAX_LOCK_RESETS=15, lockResets=0;
+  var score=0, lines=0, level=0, lastTs=null, elapsed=0;
+  var gameState='ready', holdUsed=false;
+  var flashRows=null, pieceCounts={}, scale=1, pieceSerial=0, puzzleQueue=[];
 
-  function resetBoard(){
-    board=[];
-    for(var r=0;r<ROWS;r++) board.push(new Array(COLS).fill(0));
+  function resetBoard(){ board=Engine.emptyBoard(); }
+
+  function rulesFor(){
+    if(mode==='puzzle') return {puzzle:PUZZLES[puzzleIdx]};
+    if(mode==='battle') return {battle:true, seed:battleSeed};
+    if(mode==='daily'){ var r=Engine.dailyRules(dailyDay); r.record=true; return r; }
+    return {startLevel:baseLevel(), linesPerLevel:linesPerLevel(), goalLines: mode==='sprint' ? SPRINT_LINES : 0,
+      timeLimitTicks: onTheClock() ? minutes()*60*Engine.TICKS_PER_SECOND : 0};
   }
-
-  function placeAtTop(key){
-    pieceKey=key;
-    piece=SHAPES[key].map(function(row){ return row.slice(); });
-    px=((COLS - piece[0].length) / 2) | 0;
-    py=0;
-    lockTimer=0;
-    lockResets=0;
-    pieceSerial++;
+  function pull(){
+    board=game.board; piece=game.piece; pieceKey=game.key; nextKey=game.next; heldKey=game.held; holdUsed=game.holdUsed;
+    px=game.px; py=game.py; score=game.score; lines=game.lines; level=game.level; elapsed=game.elapsedMs();
+    flashRows=game.clearRows; pieceCounts=game.pieceCounts; pieceSerial=game.serial; puzzleQueue=game.queue;
+    battle.pending=game.pending;
   }
-
-  function bumpLock(){
-    if(lockTimer>0 && lockResets<MAX_LOCK_RESETS){ lockTimer=0; lockResets++; }
+  // After the engine has moved on: mirror it, react to what happened (sounds, messages, the end), refresh the HUD.
+  function afterEngine(){
+    pull();
+    if(gameState==='playing' || gameState==='clearing') gameState = game.state==='clearing' ? 'clearing' : 'playing';
+    var events=game.takeEvents();
+    for(var i=0;i<events.length;i++) onEngineEvent(events[i]);
+    if(gameState==='playing' || gameState==='clearing') syncView();
   }
-
-  function spawn(){
-    var key=nextKey || nextPiece();
-    // In puzzles the held piece is played last once the list runs out.
-    if(!key && heldKey){ key=heldKey; heldKey=null; drawHold(); }
-    if(!key){ endGame('nopieces'); return; }
-    placeAtTop(key);
-    nextKey=nextPiece();
-    pieceCounts[pieceKey]=(pieceCounts[pieceKey]||0)+1;
-    drawNext();
-    if(mode==='puzzle') updateHud();
-    if(collides(piece,px,py)) endGame('topout');
-  }
-
-  function doHold(){
-    if(gameState!=='playing' || holdUsed) return;
-    holdUsed=true;
-    var cur=pieceKey;
-    if(heldKey===null){
-      heldKey=cur;
-      spawn();
-    } else {
-      var swap=heldKey;
-      heldKey=cur;
-      placeAtTop(swap);
-      if(collides(piece,px,py)) endGame('topout');
-    }
-    sfxRotate();
-    drawHold();
-    draw();
-  }
-
-  function collides(shape,ox,oy){
-    for(var r=0;r<shape.length;r++){
-      for(var c=0;c<shape[r].length;c++){
-        if(!shape[r][c]) continue;
-        var x=ox+c, y=oy+r;
-        if(x<0||x>=COLS||y>=ROWS) return true;
-        if(y>=0 && board[y][x]) return true;
-      }
-    }
-    return false;
-  }
-
-  function merge(){
-    for(var r=0;r<piece.length;r++){
-      for(var c=0;c<piece[r].length;c++){
-        if(piece[r][c] && py+r>=0) board[py+r][px+c]=1;
-      }
+  function onEngineEvent(e){
+    switch(e.t){
+      case 'move': sfxMove(); break;
+      case 'rotate': case 'hold': sfxRotate(); break;
+      case 'lock': sfxLock(); break;
+      case 'spawn': sendBoard(); break;
+      case 'level': applyPalette(Math.floor(level/5)); sfxLevel(); break;
+      case 'clear':
+        var msg=CLEAR_NAMES[e.n];
+        if(e.b2b) msg+='\nBACK-TO-BACK';
+        if(e.sent>0){ sendMsg('attack', e.sent); msg+='\nSENT '+e.sent; }
+        if(e.combo>0) msg+='\nCOMBO x'+e.combo;
+        if(e.leveledUp) applyPalette(Math.floor(level/5));
+        if(mode!=='puzzle'){
+          if(e.n===4) unlockSkin('purple');
+          if(e.combo>=3) unlockSkin('teal');
+          if(mode==='marathon' && lines>=100) unlockSkin('black');
+          if(score>=50000) unlockSkin('gold');
+        }
+        sfxClear(e.n);
+        if(e.leveledUp) sfxLevel();
+        showToast(msg,800);
+        break;
+      case 'over': endGame(e.kind); break;
     }
   }
-
-  var SCORE_TABLE=[0,40,100,300,1200];
-  var CLEAR_NAMES=['','SINGLE','DOUBLE','TRIPLE','TETRIS'];
-
-  function findFullRows(){
-    var rows=[];
-    for(var r=0;r<ROWS;r++){ if(board[r].every(function(v){ return v; })) rows.push(r); }
-    return rows;
+  // Redraws the HUD and the HOLD/NEXT boxes only when what they show has changed.
+  function syncView(){
+    var hud=[score,lines,level,battle.pending,puzzleQueue.length,nextKey,heldKey].join('|');
+    if(hud!==shown.hud){ shown.hud=hud; updateHud(); }
+    var boxes=(nextKey||'-')+(heldKey||'-')+(holdUsed?1:0);
+    if(boxes!==shown.boxes){ shown.boxes=boxes; drawNext(); drawHold(); }
   }
-
-  function finishClear(rows){
-    for(var i=rows.length-1;i>=0;i--) board.splice(rows[i],1);
-    for(var k=0;k<rows.length;k++) board.unshift(new Array(COLS).fill(0));
-    var cleared=rows.length;
-    lines+=cleared;
-    score+=SCORE_TABLE[cleared]*(level+1);
-    combo++;
-    if(combo>0) score+=50*combo*(level+1);
-    var msg=CLEAR_NAMES[cleared];
-    if(cleared===4){
-      if(backToBack){ score+=Math.floor(SCORE_TABLE[4]*(level+1)*0.5); msg+='\nBACK-TO-BACK'; }
-      backToBack=true;
-    } else {
-      backToBack=false;
-    }
-    var leveledUp=false;
-    if(mode==='battle'){
-      // Clears first cancel garbage that is waiting to rise, the rest goes to the rival.
-      var attack=ATTACK[cleared]+(combo>=2 ? 1 : 0);
-      var cancel=Math.min(battle.pending, attack);
-      battle.pending-=cancel;
-      attack-=cancel;
-      if(attack>0){ sendMsg('attack', Math.min(10,attack)); msg+='\nSENT '+attack; }
-    }
-    if(mode!=='puzzle' && mode!=='battle'){
-      var newLevel=baseLevel()+Math.floor(lines/linesPerLevel());
-      leveledUp=newLevel>level;
-      if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
-    }
-    if(combo>0) msg+='\nCOMBO x'+combo;
-    if(mode!=='puzzle'){
-      if(cleared===4) unlockSkin('purple');
-      if(combo>=3) unlockSkin('teal');
-      if(mode==='marathon' && lines>=100) unlockSkin('black');
-      if(score>=50000) unlockSkin('gold');
-    }
-    updateHud();
-    sfxClear(cleared);
-    if(leveledUp) sfxLevel();
-    showToast(msg,800);
-    flashRows=null;
-    if(mode==='sprint' && lines>=SPRINT_LINES){ endGame('complete'); return; }
-    if(mode==='puzzle' && boardEmpty()){ endGame('solved'); return; }
-    gameState='playing';
-    spawn();
-    holdUsed=false;
-    drawHold();
-    draw();
-    sendBoard();
-  }
-
-  function ghostY(){
-    var gy=py;
-    while(!collides(piece,px,gy+1)) gy++;
-    return gy;
-  }
-
-  function hardDrop(){
-    if(gameState!=='playing') return;
-    var gy=ghostY();
-    score+=2*(gy-py);
-    py=gy;
-    updateHud();
-    lock();
-  }
-
-  function lock(){
-    merge();
-    sfxLock();
-    dropAcc=0;
-    var rows=findFullRows();
-    if(rows.length>0){
-      gameState='clearing';
-      flashRows=rows;
-      draw();
-      setTimeout(function(){ finishClear(rows); },180);
-    } else {
-      combo=-1;
-      if(mode==='battle' && battle.pending>0){
-        var overflow=addGarbage(battle.pending);
-        battle.pending=0;
-        updateHud();
-        if(overflow){ draw(); endGame('topout'); return; }
-      }
-      spawn();
-      holdUsed=false;
-      drawHold();
-      draw();
-      sendBoard();
-    }
-  }
-
-  function tryMove(dx,dy){
-    if(gameState!=='playing') return false;
-    if(collides(piece,px+dx,py+dy)) return false;
-    px+=dx; py+=dy;
-    if(dx!==0){ sfxMove(); bumpLock(); }
-    return true;
-  }
-
-  var KICKS=[[0,0],[-1,0],[1,0],[-2,0],[2,0],[0,-1]];
-  function tryRotate(cw){
-    if(gameState!=='playing') return;
-    var r=cw?rotateCW(piece):rotateCCW(piece);
-    for(var i=0;i<KICKS.length;i++){
-      var kx=KICKS[i][0], ky=KICKS[i][1];
-      if(!collides(r,px+kx,py+ky)){ piece=r; px+=kx; py+=ky; sfxRotate(); bumpLock(); return; }
-    }
-  }
-
-  // Modern (guideline) gravity: seconds per row = (0.8 - 0.007*level)^level. Slow at first, then steeper each level:
-  // level 0 takes 1 s a row, 5 about 0.26 s, 10 about 0.04 s, and from about 15 a piece lands the moment it appears.
-  // Gravity can't get harsher than that, so from level 20 the time a landed piece waits before locking shrinks instead.
-  function speedForLevel(l){ l=Math.min(l,30); return Math.pow(0.8-l*0.007, l)*1000; }
-  function lockDelayFor(l){ return Math.max(150, LOCK_DELAY-Math.max(0,l-19)*10); }
 
   /* ---------------- HUD / storage ---------------- */
   function setNum(el,v){
@@ -498,8 +309,8 @@
         if(board[r][col]) drawBlock(bctx, col*c, r*c, c, isFlash ? pal.light : (board[r][col]===2 ? pal.mid : pal.dark));
       }
     }
-    if(piece && (gameState==='playing' || gameState==='paused')){
-      var gy=ghostY(), lw=gapFor(c);
+    if(game && piece && (gameState==='playing' || gameState==='paused')){
+      var gy=game.ghostY(), lw=gapFor(c);
       bctx.strokeStyle=pal.mid;
       bctx.lineWidth=lw;
       for(var r2=0;r2<piece.length;r2++){
@@ -740,30 +551,20 @@
   function startGame(){
     if(!isUnlocked(SKINS[skinIdx].id)){ skinIdx=skinIndex(appliedSkin); applySkin(appliedSkin); }
     ensureAudio();
-    resetBoard();
     mode=MODES[modeIdx].id;
     refreshDaily();
-    random = mode==='daily' ? seededRandom(Math.imul(dailyDay, 2654435761))
-      : mode==='battle' ? seededRandom(battleSeed) : Math.random;
-    score=0; lines=0; level=baseLevel(); elapsed=0; dropAcc=0; lockTimer=0;
-    nextKey=null; heldKey=null; holdUsed=false; combo=-1; backToBack=false; flashRows=null;
-    pieceCounts={};
-    bag=[];
+    game=Engine.create(rulesFor());
+    tickAcc=0;
+    shown={};
     gesture=null;
-    puzzleQueue=[];
-    if(mode==='puzzle'){
-      loadPuzzleBoard(puzzleIdx);
-      puzzleQueue=PUZZLES[puzzleIdx].pieces.split('');
-    }
+    pull();
     applyPalette(Math.floor(level/5));
     hideOverlay();
     gameState='playing';
-    updateHud();
     powerLed.style.opacity='1';
-    spawn();
-    drawHold();
-    draw();
     scheduleTune();
+    afterEngine();
+    draw();
     if(mode==='puzzle'){
       var tip=PUZZLES[puzzleIdx].tip;
       showToast('PUZZLE '+puzzleName(puzzleIdx)+'\n'+(tip || 'CLEAR THE BOARD'), tip ? 3000 : 1600);
@@ -825,6 +626,8 @@
       sub='SCORE '+score;
       var rid=recordId();
       if(score>best[rid]){ best[rid]=score; record=true; }
+      // The best game of the day (or the first one) is kept as a recording for the daily top.
+      if(mode==='daily' && (record || !readStore(dailyReplayKey()))) writeStore(dailyReplayKey(), game.recording());
       if(kind==='timeup') sfxLevel(); else sfxGameOver();
     } else {
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
@@ -836,7 +639,7 @@
       board: mode==='puzzle' ? puzzleLayout(puzzleAt) : board.map(function(row){ return row.slice(); })};
     renderShareCard(lastResult);
     // Before renderMenu: it may roll the daily over to a new day if the game ended after midnight.
-    if(mode==='daily') sendDailyResult(lastResult, dailyDay, best.daily);
+    if(mode==='daily') sendDailyResult(lastResult, dailyDay);
     if(kind==='complete') unlockSkin('yellow');
     if(kind==='timeup' && mode==='daily') unlockSkin('red');
     if(mode!=='puzzle' && score>=50000) unlockSkin('gold');
@@ -970,28 +773,45 @@
 
   /* ---------------- daily top ---------------- */
   // Everyone plays the same DAILY pieces, so each player's best score of the day goes on a shared list.
-  // A player is a random id kept on this device plus a name they pick; the list only shows names.
-  var NAME_RE=/^[A-Z0-9А-ЯЁ][A-Z0-9А-ЯЁ _.-]{0,9}$/;
+  // The game sends a recording of the best game's key presses, and the server replays it to count the score itself.
+  // A player is a random id kept on this device. It doubles as the recovery code that brings the name back on
+  // another phone, and the name belongs to it, so nobody else can take the name. Only a hash of the id
+  // (playerPub) ever goes into a URL or onto the list.
+  var NAME_RE=/^[A-Z0-9А-ЯЁ][A-Z0-9А-ЯЁ _.-]{0,9}$/, CODE_RE=/^[0-9a-f]{16}$/;
   function randomHex(bytes){
     return Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(bytes)), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
   }
   var playerId=readStore('pocket-tetris-player');
-  if(!/^[0-9a-f]{16}$/.test(playerId||'')){ playerId=randomHex(8); writeStore('pocket-tetris-player', playerId); }
+  if(!CODE_RE.test(playerId||'')){ playerId=randomHex(8); writeStore('pocket-tetris-player', playerId); }
   var playerName=readStore('pocket-tetris-name')||'';
   if(!NAME_RE.test(playerName)) playerName='';
-  // null while closed; otherwise 'loading', 'list', 'name' or 'error'.
-  var topView=null, topData=null, topSerial=0;
+  var playerPub=null;
+  function publicId(id){
+    if(!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve(null);
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(id)).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf, 0, 8), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+    }, function(){ return null; });
+  }
+  function refreshPub(){ return publicId(playerId).then(function(p){ playerPub=p; return p; }); }
+  refreshPub();
+  function fmtCode(c){ return c.toUpperCase().replace(/(.{4})(?=.)/g,'$1 '); }
+
+  // null while closed; otherwise 'loading', 'list', 'profile', 'name', 'code' or 'error'.
+  var topView=null, topData=null, topSerial=0, topNote='', topRetry=null;
   function topOpen(){ return topView!==null; }
 
-  function submitDaily(day,score){
+  // Sends today's best recorded game; resolves with {rank, players, score}, or null when there's nothing to send.
+  // Fails with 409 when the name belongs to someone else and 426 when this copy of the game is out of date.
+  function submitDaily(day){
+    var rec=readStore(dailyReplayKey());
+    if(!playerName || !rec) return Promise.resolve(null);
     return api('/daily', {method:'POST', headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({pid:playerId, name:playerName, day:day, score:score})});
+      body:JSON.stringify({pid:playerId, name:playerName, day:day, v:Engine.VERSION, rec:rec})});
   }
   // After a DAILY game: send today's best and show the player's place under the result.
-  function sendDailyResult(r,day,score){
-    if(!playerName || score<1) return;
-    submitDaily(day,score).then(function(res){
-      if(lastResult!==r || gameState!=='gameover') return;
+  function sendDailyResult(r,day){
+    submitDaily(day).then(function(res){
+      if(!res || lastResult!==r || gameState!=='gameover') return;
       r.rank=res.rank; r.players=res.players;
       renderShareCard(r);
       var line='PLACE '+res.rank+' OF '+res.players;
@@ -1013,61 +833,135 @@
     topPanel.hidden=false;
     overlay.hidden=false;
     topList.textContent='';
-    nameInput.hidden = topView!=='name';
+    var typing = topView==='name' || topView==='code';
+    nameInput.hidden=!typing;
+    nameInput.classList.toggle('codein', topView==='code');
+    nameInput.maxLength = topView==='code' ? 19 : 10;
+    nameInput.setAttribute('aria-label', topView==='code' ? 'Код восстановления' : 'Имя в таблице рекордов');
     topMain.hidden = topView==='loading';
-    topName.hidden = topView!=='list' || !playerName;
+    topAlt.hidden = !(topView==='list' || topView==='name');
     topBack.textContent = topView==='loading' ? 'CANCEL' : 'BACK';
+    var text;
     if(topView==='loading'){
-      topText.textContent='ЗАГРУЖАЕМ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ';
+      text='ЗАГРУЖАЕМ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ';
     } else if(topView==='error'){
-      topText.textContent='НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ';
+      text='НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ';
       topMain.textContent='RETRY';
     } else if(topView==='name'){
-      topText.textContent='ИМЯ ДЛЯ ТАБЛИЦЫ РЕКОРДОВ\nДО 10 БУКВ И ЦИФР';
+      text='ИМЯ ДЛЯ ТАБЛИЦЫ РЕКОРДОВ\nДО 10 БУКВ И ЦИФР';
       topMain.textContent='SAVE';
+      topAlt.textContent='I HAVE A CODE';
+    } else if(topView==='code'){
+      text='КОД ВОССТАНОВЛЕНИЯ\nСО СТАРОГО ТЕЛЕФОНА';
+      topMain.textContent='RESTORE';
+    } else if(topView==='profile'){
+      text='ИМЯ: '+playerName+'\n\nКОД ВОССТАНОВЛЕНИЯ:\n'+fmtCode(playerId)+'\n\nЗАПИШИ ЕГО: С НИМ ИМЯ\nВЕРНЁТСЯ НА ДРУГОМ ТЕЛЕФОНЕ.\nНИКОМУ ЕГО НЕ ПОКАЗЫВАЙ';
+      topMain.textContent='CHANGE NAME';
     } else {
       var d=topData;
-      topText.textContent = !d.players ? 'СЕГОДНЯ ЕЩЁ НИКТО НЕ ИГРАЛ.\nБУДЬ ПЕРВЫМ!'
+      text = !d.players ? 'СЕГОДНЯ ЕЩЁ НИКТО НЕ ИГРАЛ.\nБУДЬ ПЕРВЫМ!'
         : 'ИГРОКОВ СЕГОДНЯ: '+d.players+(d.me ? '' : '\nСЫГРАЙ, ЧТОБЫ ПОПАСТЬ В СПИСОК');
       d.top.forEach(function(e,i){ topRow(i+1, e.name, e.score, e.me); });
       if(d.me && d.me.rank>d.top.length){ topRow(0,'   ...','',false); topRow(d.me.rank, playerName, d.me.score, true); }
       topMain.textContent='PLAY';
+      topAlt.textContent='MY NAME';
     }
+    topText.textContent = topNote ? topNote+'\n\n'+text : text;
+  }
+  function showTopView(view,note){
+    topView=view;
+    topNote=note||'';
+    renderTop();
+  }
+  function showTopError(retry){
+    topRetry=retry;
+    showTopView('error');
   }
 
   function openTop(){
     if(!playerName){ askName(); return; }
     loadTop();
   }
-  function askName(){
-    topView='name';
-    renderTop();
+  function askName(note){
+    topSerial++;
+    showTopView('name', note);
     nameInput.value=playerName;
     setTimeout(function(){ nameInput.focus(); },50);
   }
+  function askCode(note){
+    topSerial++;
+    showTopView('code', note);
+    nameInput.value='';
+    setTimeout(function(){ nameInput.focus(); },50);
+  }
   function loadTop(){
-    var serial=++topSerial;
-    topView='loading';
-    renderTop();
+    var serial=++topSerial, note='';
+    showTopView('loading');
     refreshDaily();
     var day=dailyDay;
-    // Today's best goes up first, so a game played before picking a name (or offline) still counts.
-    var sent = best.daily>0 ? submitDaily(day,best.daily).catch(function(){}) : Promise.resolve();
-    sent.then(function(){ return api('/daily/'+day+'?pid='+playerId); }).then(function(d){
+    // Today's best game goes up first, so one played before picking a name (or offline) still counts.
+    submitDaily(day).catch(function(status){
+      if(status===409) note='taken';
+      else if(status===426) note='ОБНОВИ СТРАНИЦУ, ЧТОБЫ\nРЕЗУЛЬТАТ ПОПАЛ В СПИСОК';
+    }).then(function(){
+      return playerPub || refreshPub();
+    }).then(function(pub){
+      return api('/daily/'+day+(pub ? '?me='+pub : ''));
+    }).then(function(d){
       if(serial!==topSerial) return;
-      topData=d; topView='list'; renderTop();
+      topData=d;
+      if(note==='taken'){
+        // The name was picked on this phone before names were claimed, and someone else has it now.
+        var lost=playerName;
+        playerName='';
+        removeStore('pocket-tetris-name');
+        askName('ИМЯ '+lost+' УЖЕ ЗАНЯТО,\nВЫБЕРИ ДРУГОЕ');
+        return;
+      }
+      showTopView('list', note);
     }).catch(function(){
       if(serial!==topSerial) return;
-      topView='error'; renderTop();
+      showTopError(loadTop);
     });
   }
   function saveName(){
     var n=nameInput.value.trim().replace(/\s+/g,' ').toUpperCase();
     if(!NAME_RE.test(n)){ topText.textContent='ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ'; return; }
-    playerName=n;
-    writeStore('pocket-tetris-name', n);
     nameInput.blur();
-    loadTop();
+    var serial=++topSerial;
+    showTopView('loading');
+    api('/name', {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({pid:playerId, name:n})}).then(function(){
+      if(serial!==topSerial) return;
+      playerName=n;
+      writeStore('pocket-tetris-name', n);
+      loadTop();
+    }, function(status){
+      if(serial!==topSerial) return;
+      if(status===409) askName('ИМЯ '+n+' УЖЕ ЗАНЯТО');
+      else showTopError(function(){ askName(); });
+    });
+  }
+  // A recovery code makes this phone the player from the old one: same id, same name.
+  function restoreCode(){
+    var c=nameInput.value.replace(/\s+/g,'').toLowerCase();
+    if(!CODE_RE.test(c)){ topText.textContent='В КОДЕ 16 ЗНАКОВ:\nЦИФРЫ И БУКВЫ A-F'; return; }
+    nameInput.blur();
+    var serial=++topSerial;
+    showTopView('loading');
+    publicId(c).then(function(pub){
+      if(!pub) throw 0;
+      return api('/name/'+pub);
+    }).then(function(res){
+      if(serial!==topSerial) return;
+      playerId=c; writeStore('pocket-tetris-player', c);
+      playerName=res.name; writeStore('pocket-tetris-name', res.name);
+      playerPub=null;
+      refreshPub().then(loadTop);
+    }, function(status){
+      if(serial!==topSerial) return;
+      if(status===404) askCode('ТАКОЙ КОД НЕ НАЙДЕН');
+      else showTopError(function(){ askCode(); });
+    });
   }
   function closeTop(){
     topSerial++;
@@ -1078,7 +972,9 @@
   }
   function topGo(){
     if(topView==='name') saveName();
-    else if(topView==='error') loadTop();
+    else if(topView==='code') restoreCode();
+    else if(topView==='error'){ if(topRetry) topRetry(); }
+    else if(topView==='profile') askName();
     else if(topView==='list'){
       closeTop();
       modeIdx=MODES.map(function(m){ return m.id; }).indexOf('daily');
@@ -1086,16 +982,28 @@
       startGame();
     }
   }
+  function topAltAction(){
+    if(topView==='name') askCode();
+    else if(topView==='list') showTopView('profile');
+  }
+  // BACK steps back inside the top (profile and name to the list, code to name) and otherwise closes it.
+  function topBackAction(){
+    if(topView==='code'){ askName(); return; }
+    if((topView==='profile' || topView==='name') && playerName && topData){ topSerial++; nameInput.blur(); showTopView('list'); return; }
+    closeTop();
+  }
   function topInput(cmd){
     if(cmd==='go' && !topMain.hidden) topGo();
-    else if(cmd==='back') closeTop();
+    else if(cmd==='back') topBackAction();
   }
   topBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) openTop(); });
   topMain.addEventListener('click', topGo);
-  topName.addEventListener('click', askName);
-  topBack.addEventListener('click', closeTop);
+  topAlt.addEventListener('click', topAltAction);
+  topBack.addEventListener('click', topBackAction);
   nameInput.addEventListener('input', function(){
-    var v=nameInput.value.toUpperCase().replace(/[^A-Z0-9А-ЯЁ _.-]/g,'').slice(0,10);
+    var v = topView==='code'
+      ? nameInput.value.toUpperCase().replace(/[^0-9A-F]/g,'').slice(0,16).replace(/(.{4})(?=.)/g,'$1 ')
+      : nameInput.value.toUpperCase().replace(/[^A-Z0-9А-ЯЁ _.-]/g,'').slice(0,10);
     if(v!==nameInput.value) nameInput.value=v;
   });
 
@@ -1104,7 +1012,6 @@
   // garbage rows to the rival; whoever tops out first loses. The server only relays messages.
   var SERVER_URL = location.hostname==='127.0.0.1' ? 'http://127.0.0.1:8094' : 'https://pocket-tetris-battle.onrender.com';
   var BATTLE_OPTIONS=['NEW ROOM','JOIN ROOM'];
-  var ATTACK=[0,0,1,2,4];
   // Time can't stop in a match: garbage only rises when a piece locks, so a paused player could never lose.
   // A pause resumes by itself, a player who leaves the app for too long loses, and a rival who goes
   // silent (no board updates, which are also sent as a heartbeat) loses too.
@@ -1190,8 +1097,9 @@
     showBattle('BATTLE','ПОДКЛЮЧАЕМСЯ К СЕРВЕРУ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ', null, 'CANCEL');
     api('/rooms',{method:'POST'}).then(function(r){
       if(battle.stage==='connecting') openRoom(r.code);
-    }).catch(function(){
-      if(battle.stage==='connecting') battleError('НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
+    }).catch(function(status){
+      if(battle.stage!=='connecting') return;
+      battleError(status===429 ? 'СЛИШКОМ МНОГО КОМНАТ.\nПОДОЖДИ НЕСКОЛЬКО МИНУТ' : 'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
     });
   }
 
@@ -1296,7 +1204,7 @@
     battle.stage='countdown';
     battle.meReady=false; battle.peerReady=false; battle.reason='';
     rivalBoard='';
-    resetBoard(); piece=null; nextKey=null; heldKey=null;
+    game=null; resetBoard(); piece=null; nextKey=null; heldKey=null;
     hideOverlay();
     gameState='countdown';
     updateHud(); draw(); drawNext(); drawHold(); drawRival();
@@ -1349,7 +1257,7 @@
   function onBattleMsg(type,data){
     battle.heardAt=performance.now();
     if(type==='board'){ rivalBoard=data; drawRival(); }
-    else if(type==='attack' && battleRunning()){ battle.pending+=data; updateHud(); showToast('INCOMING '+data,700); }
+    else if(type==='attack' && battleRunning() && game){ game.garbage(data); afterEngine(); showToast('INCOMING '+data,700); }
     else if(type==='lost' && battleRunning()){ battleResult(true,'СОПЕРНИК ПРОИГРАЛ'); }
     else if(type==='won' && battleRunning()){ battleResult(false,'ТВОЯ СВЯЗЬ ПРОПАЛА'); }
   }
@@ -1357,19 +1265,6 @@
   function battleResult(won,reason){
     battle.reason=reason||'';
     endGame(won ? 'win' : 'topout');
-  }
-
-  // Incoming garbage rises from the bottom with one gap; returns true if it pushed blocks off the top.
-  function addGarbage(n){
-    var hole=Math.floor(Math.random()*COLS), overflow=false;
-    for(var i=0;i<n;i++){
-      var top=board.shift();
-      if(top.some(function(v){ return v; })) overflow=true;
-      var row=new Array(COLS).fill(2);
-      row[hole]=0;
-      board.push(row);
-    }
-    return overflow;
   }
 
   function togglePause(){
@@ -1403,6 +1298,7 @@
     if(mode==='battle') battleLeave(true);
     if(mode==='marathon' && score>best.marathon){ best.marathon=score; saveBest(); }
     gameState='ready';
+    game=null;
     if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
     piece=null; nextKey=null; heldKey=null; holdUsed=false; puzzleQueue=[];
     score=0; lines=0; level=baseLevel(); elapsed=0;
@@ -1473,7 +1369,7 @@
     writeStore('pocket-tetris-minutes', String(DURATIONS[durIdx]));
     writeStore('pocket-tetris-puzzle', String(puzzleIdx));
     // Show the chosen puzzle's board behind the menu, so it's clear what the level looks like.
-    piece=null; nextKey=null; heldKey=null;
+    game=null; piece=null; nextKey=null; heldKey=null;
     if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
     draw(); drawNext(); drawHold();
     // The free server sleeps when idle; start waking it as soon as BATTLE or DAILY is picked.
@@ -1560,17 +1456,11 @@
     if(battleUiOpen()){ battleInput(BUTTON_BATTLE[action]); return; }
     if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
     if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
-    switch(action){
-      case 'left': if(tryMove(-1,0)) draw(); break;
-      case 'right': if(tryMove(1,0)) draw(); break;
-      case 'soft':
-        if(gameState==='playing' && tryMove(0,1)){ score+=1; dropAcc=0; updateHud(); draw(); }
-        break;
-      case 'cw': tryRotate(true); draw(); break;
-      case 'ccw': tryRotate(false); draw(); break;
-      case 'drop': hardDrop(); break;
-      case 'hold': doHold(); break;
-      case 'start': togglePause(); break;
+    if(action==='start'){ togglePause(); return; }
+    if(game && (gameState==='playing' || gameState==='clearing')){
+      game.act(action);
+      afterEngine();
+      if(gameState==='playing' || gameState==='clearing') draw();
     }
   }
 
@@ -1728,36 +1618,18 @@
     if(lastTs===null) lastTs=ts;
     var dt=Math.min(ts-lastTs, 100);
     lastTs=ts;
-    if(gameState==='playing' || gameState==='clearing'){
-      elapsed+=dt;
-      if(mode==='sprint' || onTheClock()) updateTimeHud();
+    // The engine runs in fixed 1/60 s ticks, however often the screen refreshes: that keeps a game replayable.
+    if(game && (gameState==='playing' || gameState==='clearing')){
+      tickAcc+=dt;
+      var stepped=false;
+      while(tickAcc>=Engine.TICK_MS && game.state!=='over'){ tickAcc-=Engine.TICK_MS; game.step(); stepped=true; }
+      if(stepped) afterEngine();
+      if(gameState==='playing' || gameState==='clearing'){
+        if(mode==='sprint' || onTheClock()) updateTimeHud();
+        draw();
+      }
     }
     battleTick(performance.now());
-    if(gameState==='playing' && onTheClock() && elapsed>=timeLimit()){
-      endGame('timeup');
-    } else if(gameState==='playing' && mode==='puzzle'){
-      draw();
-    } else if(gameState==='playing'){
-      if(mode==='battle'){
-        // Battles speed up every 30 seconds so a match always ends.
-        var lv=Math.min(15, Math.floor(elapsed/30000));
-        if(lv>level){ level=lv; applyPalette(Math.floor(level/5)); updateHud(); sfxLevel(); }
-      }
-      dropAcc+=dt;
-      // Fast levels move a piece more than one row per frame.
-      var rowMs=speedForLevel(level);
-      while(dropAcc>=rowMs){
-        dropAcc-=rowMs;
-        if(!tryMove(0,1)){ dropAcc=0; break; }
-      }
-      if(collides(piece,px,py+1)){
-        lockTimer+=dt;
-        if(lockTimer>=lockDelayFor(level)) lock();
-      } else {
-        lockTimer=0;
-      }
-      if(gameState==='playing') draw();
-    }
     requestAnimationFrame(tick);
   }
 
