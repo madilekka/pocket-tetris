@@ -934,16 +934,18 @@
   }
 
   /* ---------------- input ---------------- */
-  var DAS=190, ARR=45;
+  // A finger tap lasts ~0.2 s, so touch needs a longer delay before auto-repeat than a key press.
+  var DAS_TOUCH=300, DAS_KEY=200, DAS_SOFT=120, ARR=45;
   var REPEATING={left:true, right:true, soft:true};
   var repeatTimers={}, keysDown={};
 
-  function startRepeat(action){
+  function startRepeat(action,isTouch){
     stopRepeat(action);
+    var delay = action==='soft' ? DAS_SOFT : (isTouch ? DAS_TOUCH : DAS_KEY);
     repeatTimers[action]=setTimeout(function rep(){
       doAction(action);
       repeatTimers[action]=setTimeout(rep,ARR);
-    },DAS);
+    },delay);
   }
   function stopRepeat(action){
     clearTimeout(repeatTimers[action]);
@@ -979,7 +981,7 @@
       activePointer=e.pointerId;
       btn.classList.add('pressed');
       doAction(action);
-      if(REPEATING[action]) startRepeat(action);
+      if(REPEATING[action]) startRepeat(action, e.pointerType!=='mouse');
     });
     function release(e){
       if(activePointer===null || e.pointerId!==activePointer) return;
@@ -1009,7 +1011,7 @@
     if(keysDown[e.code]) return;
     keysDown[e.code]=true;
     doAction(action);
-    if(REPEATING[action]) startRepeat(action);
+    if(REPEATING[action]) startRepeat(action, false);
   });
   window.addEventListener('keyup',function(e){
     var action=KEYMAP[e.code];
