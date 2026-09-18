@@ -88,6 +88,11 @@
             </div>
             <div class="small blink" id="overlayPrompt">PRESS START</div>
             <div class="stats" id="overlayStats"></div>
+            <div class="lcdhelp" id="lcdHelp">СВАЙП ВБОК - ДВИГАТЬ
+ВНИЗ - БЫСТРЕЕ, РЫВОК - СБРОС
+ВВЕРХ - HOLD, ТАП - ПОВОРОТ
+START - ПАУЗА И МЕНЮ
+ПОЛОСКА СВЕРХУ - ЛИНИИ ДО УРОВНЯ</div>
           </div>
         </div>
       </div>
@@ -95,10 +100,10 @@
       <div class="controls">
         <div class="dpad">
           <div class="h"></div><div class="v"></div>
-          <button type="button" class="left" data-action="left" aria-label="Влево">&#9664;&#xFE0E;</button>
-          <button type="button" class="right" data-action="right" aria-label="Вправо">&#9654;&#xFE0E;</button>
-          <button type="button" class="up" data-action="drop" aria-label="Сбросить вниз">&#9650;</button>
-          <button type="button" class="down" data-action="soft" aria-label="Ускорить падение">&#9660;</button>
+          <button type="button" class="left" data-action="left" aria-label="Влево"><span>&#9664;&#xFE0E;</span></button>
+          <button type="button" class="right" data-action="right" aria-label="Вправо"><span>&#9654;&#xFE0E;</span></button>
+          <button type="button" class="up" data-action="drop" aria-label="Сбросить вниз"><span>&#9650;</span></button>
+          <button type="button" class="down" data-action="soft" aria-label="Ускорить падение"><span>&#9660;</span></button>
         </div>
         <div class="abgroup">
           <button type="button" class="b" data-action="ccw" aria-label="Повернуть против часовой">B</button>
@@ -113,10 +118,6 @@
   </div>
 
   <div class="below" id="below">
-    <p class="help">
-      <span class="help-keys"><b>&larr; &rarr;</b> двигать · <b>&darr;</b> ускорить · <b>пробел</b> сбросить<br><b>&uarr; / X</b>, <b>Z</b> повернуть · <b>C</b> отложить · <span class="nw"><b>Enter</b> старт/пауза</span><br>Полоска сверху — сколько линий до нового уровня</span>
-      <span class="help-touch"><b>Свайп</b>: &larr; &rarr; двигать · &darr; ускорить · <b>рывок &darr;</b> сбросить · <b>&uarr;</b> HOLD · <b>тап</b> поворот<br><b>&#9650;</b> сброс · <b>A / B</b> поворот · полоска сверху — линии до уровня</span>
-    </p>
     <button type="button" class="install" id="installBtn" hidden>Установить как приложение</button>
     <p class="ios-hint" id="iosHint" hidden>Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b></p>
   </div>

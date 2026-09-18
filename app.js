@@ -11,7 +11,7 @@
   var timePanel=$('timePanel'), timeVal=$('timeVal'), lvBar=$('lvBar'), lvLeft=$('lvLeft');
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel')];
-  var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
+  var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -507,6 +507,7 @@
     menuEl.hidden = kind!=='main';
     pauseMenuEl.hidden = kind!=='pause';
     overlayPrompt.hidden = kind!=='main';
+    lcdHelp.hidden = gameState!=='ready';
     overlay.hidden=false;
   }
   function hideOverlay(){ overlay.hidden=true; }

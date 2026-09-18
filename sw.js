@@ -1,4 +1,4 @@
-const CACHE = 'pocket-tetris-v2';
+const CACHE = 'pocket-tetris-v3';
 const CORE = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const CORE = [
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
   './fonts/press-start-2p-latin.woff2',
+  './fonts/press-start-2p-cyrillic.woff2',
   './fonts/jetbrains-mono-latin.woff2',
   './fonts/jetbrains-mono-cyrillic.woff2'
 ];
