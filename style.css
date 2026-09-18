@@ -144,6 +144,7 @@ body{
   gap: 6px 8px;
   position:relative;
   overflow:hidden;
+  touch-action:none;
 }
 .screen::after{
   content:"";
@@ -156,11 +157,28 @@ body{
   grid-column: 1 / -1;
   display:flex;
   justify-content:space-between;
+  align-items:center;
   font-family: var(--pix);
   font-size: 9px;
   letter-spacing:1px;
   color: var(--lcd-dark);
 }
+.lvwrap{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.lvbar{
+  display:flex;
+  gap:2px;
+}
+.lvbar i{
+  display:block;
+  width:6px;
+  height:8px;
+  border:1px solid var(--lcd-dark);
+}
+.lvbar i.on{ background: var(--lcd-dark); }
 #board{
   display:block;
   width:100%;
@@ -222,6 +240,44 @@ body{
 .overlay .big{ font-size:14px; line-height:1.6; }
 .overlay .small{ font-size:8px; line-height:1.9; opacity:.85; white-space:pre-line; }
 .overlay .stats{ font-size:7px; line-height:2.1; opacity:.7; letter-spacing:.5px; max-width:210px; }
+.overlay .small:empty, .overlay .stats:empty{ display:none; }
+.menu{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  font-size:9px;
+}
+.mrow{
+  display:flex;
+  align-items:center;
+  border-radius:2px;
+}
+.mrow.focus{
+  background: var(--lcd-dark);
+  color: var(--lcd-bg);
+}
+.mval{
+  min-width:112px;
+  text-align:center;
+  line-height:1;
+}
+.mbtn{
+  width:34px;
+  height:28px;
+  padding:0;
+  border:none;
+  background:transparent;
+  color:inherit;
+  font-family: var(--pix);
+  font-size:9px;
+  cursor:pointer;
+}
+.mhint{
+  font-size:6.5px;
+  opacity:.75;
+  margin-bottom:4px;
+}
 
 .toast{
   position:absolute;

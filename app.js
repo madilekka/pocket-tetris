@@ -7,10 +7,27 @@
   var nextCv=$('next'), nctx=nextCv.getContext('2d');
   var holdCv=$('hold'), hctx=holdCv.getContext('2d');
   var toastEl=$('toast'), overlay=$('overlay'), overlayTitle=$('overlayTitle'), overlaySub=$('overlaySub'), overlayStats=$('overlayStats');
-  var linesVal=$('linesVal'), levelVal=$('levelVal'), scoreVal=$('scoreVal'), topVal=$('topVal');
+  var linesVal=$('linesVal'), levelVal=$('levelVal'), scoreVal=$('scoreVal'), topVal=$('topVal'), topLabel=$('topLabel');
+  var timePanel=$('timePanel'), timeVal=$('timeVal'), lvBar=$('lvBar'), lvLeft=$('lvLeft');
+  var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
+  var menuRows=[$('rowMode'), $('rowLevel')];
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
-  var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below');
+  var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
+
+  var lvCells=[];
+  for(var li=0;li<10;li++){ var cellEl=document.createElement('i'); lvBar.appendChild(cellEl); lvCells.push(cellEl); }
+
+  /* ---------------- modes ---------------- */
+  var MODES=[
+    {id:'marathon', name:'MARATHON', hint:'ENDLESS'},
+    {id:'sprint', name:'40 LINES', hint:'BEAT THE CLOCK'},
+    {id:'ultra', name:'2 MINUTES', hint:'MAX SCORE'}
+  ];
+  var SPRINT_LINES=40, ULTRA_MS=120000;
+  var modeIdx=0, mode='marathon', startLevel=0, menuRow=0, menuLockUntil=0;
+  var best={marathon:0, sprint:0, ultra:0};
+  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint', ultra:'pocket-tetris-best-ultra'};
 
   /* ---------------- pieces ---------------- */
   var SHAPES={
@@ -69,9 +86,11 @@
 
   /* ---------------- state ---------------- */
   var board=[], piece=null, pieceKey=null, nextKey=null, heldKey=null, px=0, py=0;
-  var score=0, lines=0, level=0, dropAcc=0, lockTimer=0, lastTs=null;
-  var gameState='ready', highScore=0, startHigh=0, holdUsed=false, combo=-1, backToBack=false;
-  var flashRows=null, pieceCounts={}, scale=1;
+  var score=0, lines=0, level=0, dropAcc=0, lockTimer=0, lastTs=null, elapsed=0;
+  var gameState='ready', holdUsed=false, combo=-1, backToBack=false;
+  var flashRows=null, pieceCounts={}, scale=1, pieceSerial=0;
+  // A grounded piece locks after a short fixed delay, not after a full gravity step (1 s at level 0).
+  var LOCK_DELAY=250, MAX_LOCK_RESETS=15, lockResets=0;
 
   function resetBoard(){
     board=[];
@@ -84,6 +103,12 @@
     px=((COLS - piece[0].length) / 2) | 0;
     py=0;
     lockTimer=0;
+    lockResets=0;
+    pieceSerial++;
+  }
+
+  function bumpLock(){
+    if(lockTimer>0 && lockResets<MAX_LOCK_RESETS){ lockTimer=0; lockResets++; }
   }
 
   function spawn(){
@@ -91,7 +116,7 @@
     nextKey=nextFromBag();
     pieceCounts[pieceKey]=(pieceCounts[pieceKey]||0)+1;
     drawNext();
-    if(collides(piece,px,py)) gameOver();
+    if(collides(piece,px,py)) endGame('topout');
   }
 
   function doHold(){
@@ -105,7 +130,7 @@
       var swap=heldKey;
       heldKey=cur;
       placeAtTop(swap);
-      if(collides(piece,px,py)) gameOver();
+      if(collides(piece,px,py)) endGame('topout');
     }
     sfxRotate();
     drawHold();
@@ -156,16 +181,19 @@
     } else {
       backToBack=false;
     }
-    var newLevel=Math.floor(lines/10);
-    var leveledUp=newLevel>level;
-    if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
+    var leveledUp=false;
+    if(mode!=='sprint'){
+      var newLevel=startLevel+Math.floor(lines/10);
+      leveledUp=newLevel>level;
+      if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
+    }
     if(combo>0) msg+='\nCOMBO x'+combo;
-    if(score>highScore){ highScore=score; saveHigh(); }
     updateHud();
     sfxClear(cleared);
     if(leveledUp) sfxLevel();
     showToast(msg,800);
     flashRows=null;
+    if(mode==='sprint' && lines>=SPRINT_LINES){ endGame('complete'); return; }
     gameState='playing';
     spawn();
     holdUsed=false;
@@ -211,7 +239,7 @@
     if(gameState!=='playing') return false;
     if(collides(piece,px+dx,py+dy)) return false;
     px+=dx; py+=dy;
-    if(dx!==0) sfxMove();
+    if(dx!==0){ sfxMove(); bumpLock(); }
     return true;
   }
 
@@ -221,7 +249,7 @@
     var r=cw?rotateCW(piece):rotateCCW(piece);
     for(var i=0;i<KICKS.length;i++){
       var kx=KICKS[i][0], ky=KICKS[i][1];
-      if(!collides(r,px+kx,py+ky)){ piece=r; px+=kx; py+=ky; sfxRotate(); return; }
+      if(!collides(r,px+kx,py+ky)){ piece=r; px+=kx; py+=ky; sfxRotate(); bumpLock(); return; }
     }
   }
 
@@ -233,15 +261,52 @@
     el.textContent=s;
     el.style.fontSize = s.length>6 ? '8px' : '';
   }
+  function fmtTime(ms,tenths){
+    var t=Math.max(0,ms);
+    var m=Math.floor(t/60000), s=Math.floor(t/1000)%60;
+    var txt=m+':'+(s<10?'0':'')+s;
+    if(tenths) txt+='.'+(Math.floor(t/100)%10);
+    return txt;
+  }
+  function timeText(){
+    if(mode==='sprint') return fmtTime(elapsed,true);
+    return fmtTime(Math.ceil(Math.max(0,ULTRA_MS-elapsed)/1000)*1000,false);
+  }
+  function inGame(){ return gameState==='playing' || gameState==='paused' || gameState==='clearing'; }
+  function bestText(){
+    if(mode==='sprint') return best.sprint ? fmtTime(best.sprint,true) : '--';
+    return inGame() ? Math.max(best[mode],score) : best[mode];
+  }
+  var lastTimeText='';
+  function updateTimeHud(){
+    var t=timeText();
+    if(t===lastTimeText) return;
+    lastTimeText=t;
+    setNum(timeVal,t);
+  }
   function updateHud(){
     linesVal.textContent=String(lines).padStart(3,'0');
+    var toGo, filled;
+    if(mode==='sprint'){
+      toGo=Math.max(0,SPRINT_LINES-lines);
+      filled=Math.min(10,Math.floor(lines/(SPRINT_LINES/10)));
+    } else {
+      toGo=10-(lines%10);
+      filled=lines%10;
+    }
+    for(var i=0;i<10;i++) lvCells[i].classList.toggle('on', i<filled);
+    lvLeft.textContent=String(toGo);
     setNum(levelVal,level);
     setNum(scoreVal,score);
-    setNum(topVal,highScore);
+    timePanel.hidden = mode==='marathon';
+    topLabel.textContent = mode==='marathon' ? 'TOP' : 'BEST';
+    setNum(topVal,bestText());
+    lastTimeText='';
+    updateTimeHud();
   }
   function readStore(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
   function writeStore(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
-  function saveHigh(){ writeStore('pocket-tetris-high', String(highScore)); }
+  function saveBest(){ for(var k in BEST_KEYS) writeStore(BEST_KEYS[k], String(best[k])); }
 
   /* ---------------- drawing ---------------- */
   function gapFor(cell){ return Math.max(1, Math.round(cell/16)); }
@@ -434,11 +499,11 @@
   });
 
   /* ---------------- game flow ---------------- */
-  function showOverlay(title,sub,stats){
+  function showOverlay(title,sub,stats,withMenu){
     overlayTitle.textContent=title;
-    overlaySub.textContent=sub;
+    overlaySub.textContent=sub||'';
     overlayStats.textContent=stats||'';
-    overlaySub.classList.toggle('blink', /PRESS START/.test(sub));
+    menuEl.hidden=!withMenu;
     overlay.hidden=false;
   }
   function hideOverlay(){ overlay.hidden=true; }
@@ -446,15 +511,16 @@
   function startGame(){
     ensureAudio();
     resetBoard();
-    score=0; lines=0; level=0; dropAcc=0; lockTimer=0;
+    mode=MODES[modeIdx].id;
+    score=0; lines=0; level=startLevel; elapsed=0; dropAcc=0; lockTimer=0;
     nextKey=null; heldKey=null; holdUsed=false; combo=-1; backToBack=false; flashRows=null;
     pieceCounts={};
     bag=[];
-    startHigh=highScore;
-    applyPalette(0);
-    updateHud();
+    gesture=null;
+    applyPalette(Math.floor(level/5));
     hideOverlay();
     gameState='playing';
+    updateHud();
     powerLed.style.opacity='1';
     spawn();
     drawHold();
@@ -462,16 +528,33 @@
     scheduleTune();
   }
 
-  function gameOver(){
+  function endGame(kind){
     gameState='gameover';
     stopTune();
     stopAllRepeats();
-    sfxGameOver();
-    var isRecord = score>0 && score>startHigh;
-    if(score>highScore){ highScore=score; saveHigh(); }
+    gesture=null;
+    // Ignore menu input briefly, so taps meant for the last piece don't restart the game.
+    menuLockUntil=performance.now()+900;
+    var title='GAME OVER', sub='', record=false;
+    if(kind==='complete'){
+      title='COMPLETE';
+      sub='TIME '+fmtTime(elapsed,true);
+      if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
+      sfxLevel();
+    } else if(kind==='timeup'){
+      title='TIME UP';
+      sub='SCORE '+score;
+      if(score>best.ultra){ best.ultra=score; record=true; }
+      sfxLevel();
+    } else {
+      if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
+      sfxGameOver();
+    }
+    saveBest();
     updateHud();
+    draw();
     powerLed.style.opacity='.35';
-    showOverlay('GAME OVER', (isRecord ? 'NEW TOP SCORE\n' : '') + 'PRESS START', statsLine());
+    showOverlay(title, (record ? 'NEW RECORD' + (sub ? '\n' : '') : '') + sub, statsLine(), true);
   }
 
   function togglePause(){
@@ -479,7 +562,8 @@
       gameState='paused';
       stopTune();
       stopAllRepeats();
-      showOverlay('PAUSE','PRESS START',statsLine());
+      gesture=null;
+      showOverlay('PAUSE','',statsLine(),false);
     } else if(gameState==='paused'){
       gameState='playing';
       hideOverlay();
@@ -487,10 +571,49 @@
     }
   }
 
-  function handleStart(){
-    if(gameState==='ready' || gameState==='gameover') startGame();
-    else togglePause();
+  /* ---------------- menu: mode and start level ---------------- */
+  function renderMenu(){
+    var m=MODES[modeIdx];
+    modeValEl.textContent=m.name;
+    modeHintEl.textContent=m.hint;
+    levelSelEl.textContent='LEVEL '+startLevel;
+    menuRows[0].classList.toggle('focus', menuRow===0);
+    menuRows[1].classList.toggle('focus', menuRow===1);
   }
+
+  function selectionChanged(){
+    mode=MODES[modeIdx].id;
+    score=0; lines=0; level=startLevel; elapsed=0;
+    applyPalette(Math.floor(level/5));
+    writeStore('pocket-tetris-mode', mode);
+    writeStore('pocket-tetris-level', String(startLevel));
+    updateHud();
+  }
+
+  function menuInput(cmd){
+    if(!cmd || performance.now()<menuLockUntil) return;
+    if(cmd==='go'){ startGame(); return; }
+    if(cmd==='up') menuRow=0;
+    else if(cmd==='down') menuRow=1;
+    else {
+      var d = cmd==='inc' ? 1 : -1;
+      if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
+      else startLevel=(startLevel+d+10)%10;
+      selectionChanged();
+    }
+    sfxMove();
+    renderMenu();
+  }
+
+  function inMenu(){ return gameState==='ready' || gameState==='gameover'; }
+
+  Array.prototype.forEach.call(menuEl.querySelectorAll('.mbtn'), function(b){
+    b.addEventListener('click', function(){
+      menuRow=+b.getAttribute('data-row');
+      menuInput(b.getAttribute('data-dir')==='1' ? 'inc' : 'dec');
+      renderMenu();
+    });
+  });
 
   /* ---------------- input ---------------- */
   // A finger tap lasts ~0.2 s, so touch needs a longer delay before auto-repeat than a key press.
@@ -514,7 +637,9 @@
     keysDown={};
   }
 
+  var BUTTON_MENU={drop:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
   function doAction(action){
+    if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
     switch(action){
       case 'left': if(tryMove(-1,0)) draw(); break;
       case 'right': if(tryMove(1,0)) draw(); break;
@@ -525,7 +650,7 @@
       case 'ccw': tryRotate(false); draw(); break;
       case 'drop': hardDrop(); break;
       case 'hold': doHold(); break;
-      case 'start': handleStart(); break;
+      case 'start': togglePause(); break;
     }
   }
 
@@ -555,7 +680,11 @@
     btn.addEventListener('contextmenu',function(e){ e.preventDefault(); });
   });
 
-  overlay.addEventListener('click', handleStart);
+  overlay.addEventListener('click', function(e){
+    if(menuEl.contains(e.target)) return;
+    if(gameState==='paused') togglePause();
+    else if(inMenu()) menuInput('go');
+  });
   consoleEl.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
   var KEYMAP={
@@ -564,11 +693,20 @@
     Space:'drop', Enter:'start', KeyP:'start', Escape:'start',
     KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold'
   };
+  var KEY_MENU={ArrowUp:'up', ArrowDown:'down', ArrowLeft:'dec', ArrowRight:'inc', Enter:'go', Space:'go', KeyP:'go'};
   window.addEventListener('keydown',function(e){
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(inMenu()){
+      var cmd=KEY_MENU[e.code];
+      if(!cmd) return;
+      e.preventDefault();
+      if(!e.repeat) menuInput(cmd);
+      return;
+    }
     var action=KEYMAP[e.code];
-    if(!action || e.ctrlKey || e.metaKey || e.altKey) return;
+    if(!action) return;
     e.preventDefault();
-    if(keysDown[e.code]) return;
+    if(e.repeat || keysDown[e.code]) return;
     keysDown[e.code]=true;
     doAction(action);
     if(REPEATING[action]) startRepeat(action, action==='soft' ? DAS_SOFT : DAS_KEY);
@@ -579,6 +717,59 @@
     keysDown[e.code]=false;
     if(REPEATING[action]) stopRepeat(action);
   });
+
+  /* ---------------- swipe gestures on the screen ---------------- */
+  var gesture=null;
+  var TAP_MS=250, FLICK_SPEED=1.1, FLICK_WINDOW=100;
+  function swipeStep(){ return Math.max(8, boardCv.clientWidth*scale/COLS); }
+
+  screenEl.addEventListener('pointerdown',function(e){
+    if(e.pointerType==='mouse' || gameState!=='playing' || gesture) return;
+    e.preventDefault();
+    gesture={id:e.pointerId, x0:e.clientX, y0:e.clientY, ax:e.clientX, ay:e.clientY,
+      t0:e.timeStamp, moved:false, serial:pieceSerial, trail:[[e.timeStamp,e.clientY]]};
+  });
+
+  screenEl.addEventListener('pointermove',function(e){
+    var g=gesture;
+    if(!g || e.pointerId!==g.id || gameState!=='playing') return;
+    e.preventDefault();
+    g.trail.push([e.timeStamp,e.clientY]);
+    while(g.trail.length>2 && e.timeStamp-g.trail[0][0]>FLICK_WINDOW) g.trail.shift();
+    // A new piece starts its own drag, so the old swipe doesn't keep pushing it.
+    if(g.serial!==pieceSerial){
+      g.serial=pieceSerial;
+      g.x0=g.ax=e.clientX;
+      g.y0=g.ay=e.clientY;
+      return;
+    }
+    var step=swipeStep();
+    var totX=Math.abs(e.clientX-g.x0), totY=e.clientY-g.y0;
+    if(totY>0 && totY>totX*1.5){
+      g.ax=e.clientX;
+      while(e.clientY-g.ay>=step){ g.ay+=step; g.moved=true; doAction('soft'); }
+    } else {
+      g.ay=e.clientY;
+      while(e.clientX-g.ax>=step){ g.ax+=step; g.moved=true; doAction('right'); }
+      while(g.ax-e.clientX>=step){ g.ax-=step; g.moved=true; doAction('left'); }
+    }
+  });
+
+  function endGesture(e){
+    var g=gesture;
+    if(!g || e.pointerId!==g.id) return;
+    gesture=null;
+    if(e.type==='pointercancel' || gameState!=='playing' || g.serial!==pieceSerial) return;
+    var step=swipeStep();
+    var dx=e.clientX-g.x0, dy=e.clientY-g.y0, dt=e.timeStamp-g.t0;
+    var first=g.trail[0], span=e.timeStamp-first[0];
+    var vy=span>0 ? (e.clientY-first[1])/span : 0;
+    if(!g.moved && dt<TAP_MS && Math.abs(dx)<step*0.6 && Math.abs(dy)<step*0.6){ doAction('cw'); return; }
+    if(dy<-step*2 && -dy>Math.abs(dx)*1.5){ doAction('hold'); return; }
+    if(dy>step && vy>FLICK_SPEED && dy>Math.abs(dx)*1.5) doAction('drop');
+  }
+  screenEl.addEventListener('pointerup',endGesture);
+  screenEl.addEventListener('pointercancel',endGesture);
 
   window.addEventListener('blur', stopAllRepeats);
   document.addEventListener('visibilitychange',function(){
@@ -592,17 +783,23 @@
     if(lastTs===null) lastTs=ts;
     var dt=Math.min(ts-lastTs, 100);
     lastTs=ts;
-    if(gameState==='playing'){
-      var interval=speedForLevel(level);
+    if(gameState==='playing' || gameState==='clearing'){
+      elapsed+=dt;
+      if(mode!=='marathon') updateTimeHud();
+    }
+    if(gameState==='playing' && mode==='ultra' && elapsed>=ULTRA_MS){
+      endGame('timeup');
+    } else if(gameState==='playing'){
       dropAcc+=dt;
-      if(dropAcc>=interval){
+      if(dropAcc>=speedForLevel(level)){
         dropAcc=0;
-        if(tryMove(0,1)){
-          lockTimer=0;
-        } else {
-          lockTimer+=interval;
-          if(lockTimer>350) lock();
-        }
+        tryMove(0,1);
+      }
+      if(collides(piece,px,py+1)){
+        lockTimer+=dt;
+        if(lockTimer>=LOCK_DELAY) lock();
+      } else {
+        lockTimer=0;
       }
       if(gameState==='playing') draw();
     }
@@ -610,13 +807,18 @@
   }
 
   /* ---------------- boot ---------------- */
-  highScore=parseInt(readStore('pocket-tetris-high')||'0',10)||0;
+  for(var bk in BEST_KEYS) best[bk]=parseInt(readStore(BEST_KEYS[bk])||'0',10)||0;
+  modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
+  startLevel=Math.min(9, Math.max(0, parseInt(readStore('pocket-tetris-level')||'0',10)||0));
+  mode=MODES[modeIdx].id;
+  level=startLevel;
   muted=readStore('pocket-tetris-muted')==='1';
   renderMute();
   resetBoard();
-  applyPalette(0);
+  applyPalette(Math.floor(level/5));
   updateHud();
-  showOverlay('TETRIS','PRESS START','');
+  renderMenu();
+  showOverlay('TETRIS','','',true);
   powerLed.style.opacity='.35';
   fit();
   window.addEventListener('resize', queueFit);

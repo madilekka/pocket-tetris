@@ -32,8 +32,11 @@
       </div>
 
       <div class="bezel">
-        <div class="screen">
-          <div class="linesbar"><span>LINES</span><span id="linesVal">000</span></div>
+        <div class="screen" id="screen">
+          <div class="linesbar">
+            <span>LINES <span id="linesVal">000</span></span>
+            <span class="lvwrap"><span class="lvbar" id="lvBar"></span><span id="lvLeft">10</span></span>
+          </div>
           <canvas id="board" width="160" height="320"></canvas>
           <div class="sidebar">
             <div class="panel">
@@ -52,8 +55,12 @@
               <div class="label">SCORE</div>
               <div class="value" id="scoreVal">0</div>
             </div>
+            <div class="panel" id="timePanel" hidden>
+              <div class="label">TIME</div>
+              <div class="value" id="timeVal">0:00</div>
+            </div>
             <div class="panel">
-              <div class="label">TOP</div>
+              <div class="label" id="topLabel">TOP</div>
               <div class="value" id="topVal">0</div>
             </div>
           </div>
@@ -61,7 +68,21 @@
           <div class="toast" id="toast"></div>
           <div class="overlay" id="overlay">
             <div class="big" id="overlayTitle">TETRIS</div>
-            <div class="small" id="overlaySub">PRESS START</div>
+            <div class="small" id="overlaySub"></div>
+            <div class="menu" id="menu">
+              <div class="mrow" id="rowMode">
+                <button type="button" class="mbtn" data-row="0" data-dir="-1" aria-label="Предыдущий режим">&lt;</button>
+                <span class="mval" id="modeVal">MARATHON</span>
+                <button type="button" class="mbtn" data-row="0" data-dir="1" aria-label="Следующий режим">&gt;</button>
+              </div>
+              <div class="mhint" id="modeHint">ENDLESS</div>
+              <div class="mrow" id="rowLevel">
+                <button type="button" class="mbtn" data-row="1" data-dir="-1" aria-label="Уровень ниже">&lt;</button>
+                <span class="mval" id="levelSel">LEVEL 0</span>
+                <button type="button" class="mbtn" data-row="1" data-dir="1" aria-label="Уровень выше">&gt;</button>
+              </div>
+            </div>
+            <div class="small blink">PRESS START</div>
             <div class="stats" id="overlayStats"></div>
           </div>
         </div>
@@ -89,8 +110,8 @@
 
   <div class="below" id="below">
     <p class="help">
-      <span class="help-keys"><b>&larr; &rarr;</b> двигать · <b>&darr;</b> ускорить · <b>пробел</b> сбросить<br><b>&uarr; / X</b>, <b>Z</b> повернуть · <b>C</b> отложить · <span class="nw"><b>Enter</b> старт/пауза</span></span>
-      <span class="help-touch"><b>&#9664;&#xFE0E; &#9654;&#xFE0E;</b> двигать · <b>&#9660;</b> ускорить · <b>&#9650;</b> сбросить<br><b>A / B</b> повернуть · <b>HOLD</b> отложить фигуру</span>
+      <span class="help-keys"><b>&larr; &rarr;</b> двигать · <b>&darr;</b> ускорить · <b>пробел</b> сбросить<br><b>&uarr; / X</b>, <b>Z</b> повернуть · <b>C</b> отложить · <span class="nw"><b>Enter</b> старт/пауза</span><br>Полоска сверху — сколько линий до нового уровня</span>
+      <span class="help-touch"><b>Свайп</b>: &larr; &rarr; двигать · &darr; ускорить · <b>рывок &darr;</b> сбросить · <b>&uarr;</b> HOLD · <b>тап</b> поворот<br><b>&#9650;</b> сброс · <b>A / B</b> поворот · полоска сверху — линии до уровня</span>
     </p>
     <button type="button" class="install" id="installBtn" hidden>Установить как приложение</button>
     <p class="ios-hint" id="iosHint" hidden>Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b></p>
