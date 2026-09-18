@@ -29,7 +29,8 @@
     {id:'sprint', name:'40 LINES', hint:'СОБЕРИ 40 ЛИНИЙ НА ВРЕМЯ'},
     {id:'ultra', name:'TIME ATTACK', hint:'МАКСИМУМ ОЧКОВ ЗА ВРЕМЯ'},
     {id:'daily', name:'DAILY', hint:''},
-    {id:'puzzle', name:'PUZZLES', hint:'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ'}
+    {id:'puzzle', name:'PUZZLES', hint:'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ'},
+    {id:'battle', name:'BATTLE', hint:'ОНЛАЙН ПРОТИВ ДРУГА'}
   ];
 
   /* ---------------- puzzles ---------------- */
@@ -181,6 +182,7 @@
     st.setProperty('--lcd-dark',pal.dark);
     drawNext();
     drawHold();
+    if(mode==='battle') drawRival();
   }
 
   /* ---------------- state ---------------- */
@@ -286,7 +288,15 @@
       backToBack=false;
     }
     var leveledUp=false;
-    if(mode!=='sprint' && mode!=='puzzle'){
+    if(mode==='battle'){
+      // Clears first cancel garbage that is waiting to rise, the rest goes to the rival.
+      var attack=ATTACK[cleared]+(combo>=2 ? 1 : 0);
+      var cancel=Math.min(battle.pending, attack);
+      battle.pending-=cancel;
+      attack-=cancel;
+      if(attack>0){ sendMsg('attack', Math.min(10,attack)); msg+='\nSENT '+attack; }
+    }
+    if(mode!=='sprint' && mode!=='puzzle' && mode!=='battle'){
       var newLevel=baseLevel()+Math.floor(lines/linesPerLevel());
       leveledUp=newLevel>level;
       if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
@@ -310,6 +320,7 @@
     holdUsed=false;
     drawHold();
     draw();
+    sendBoard();
   }
 
   function ghostY(){
@@ -339,10 +350,17 @@
       setTimeout(function(){ finishClear(rows); },180);
     } else {
       combo=-1;
+      if(mode==='battle' && battle.pending>0){
+        var overflow=addGarbage(battle.pending);
+        battle.pending=0;
+        updateHud();
+        if(overflow){ draw(); endGame('topout'); return; }
+      }
       spawn();
       holdUsed=false;
       drawHold();
       draw();
+      sendBoard();
     }
   }
 
@@ -398,10 +416,21 @@
   }
   function updateHud(){
     linesVal.textContent=String(lines).padStart(3,'0');
-    var isPuzzle = mode==='puzzle';
-    lvWrap.hidden=isPuzzle;
-    goalText.hidden=!isPuzzle;
+    var isPuzzle = mode==='puzzle', isBattle = mode==='battle';
+    lvWrap.hidden = isPuzzle || isBattle;
+    goalText.hidden = !(isPuzzle || isBattle);
+    rivalPanel.hidden = !isBattle;
+    scoreVal.parentNode.hidden = isBattle;
+    topVal.parentNode.hidden = isBattle;
+    if(isBattle){
+      goalText.textContent = battle.pending>0 ? 'INCOMING '+battle.pending : 'VS FRIEND';
+      levelLabel.textContent='LEVEL';
+      setNum(levelVal,level);
+      timePanel.hidden=true;
+      return;
+    }
     if(isPuzzle){
+      goalText.textContent='CLEAR ALL';
       // The side panels switch roles: which puzzle, pieces left, the pieces after NEXT, and overall progress.
       var p=PUZZLES[puzzleIdx];
       var left = inGame() ? puzzleQueue.length+(nextKey?1:0)+(heldKey?1:0)+(piece?1:0) : p.pieces.length;
@@ -454,7 +483,7 @@
     for(var r=0;r<ROWS;r++){
       var isFlash = gameState==='clearing' && flashRows && flashRows.indexOf(r)!==-1;
       for(var col=0;col<COLS;col++){
-        if(board[r][col]) drawBlock(bctx, col*c, r*c, c, isFlash ? pal.light : pal.dark);
+        if(board[r][col]) drawBlock(bctx, col*c, r*c, c, isFlash ? pal.light : (board[r][col]===2 ? pal.mid : pal.dark));
       }
     }
     if(piece && (gameState==='playing' || gameState==='paused')){
@@ -667,6 +696,7 @@
     overlayStats.textContent=stats||'';
     menuEl.hidden = kind!=='main';
     pauseMenuEl.hidden = kind!=='pause';
+    battlePanel.hidden = true;
     overlayPrompt.hidden = kind!=='main';
     lcdHelp.hidden = gameState!=='ready';
     var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
@@ -689,7 +719,8 @@
     resetBoard();
     mode=MODES[modeIdx].id;
     refreshDaily();
-    random = mode==='daily' ? seededRandom(Math.imul(dailyDay, 2654435761)) : Math.random;
+    random = mode==='daily' ? seededRandom(Math.imul(dailyDay, 2654435761))
+      : mode==='battle' ? seededRandom(battleSeed) : Math.random;
     score=0; lines=0; level=baseLevel(); elapsed=0; dropAcc=0; lockTimer=0;
     nextKey=null; heldKey=null; holdUsed=false; combo=-1; backToBack=false; flashRows=null;
     pieceCounts={};
@@ -725,6 +756,18 @@
     gesture=null;
     // Ignore menu input briefly, so taps meant for the last piece don't restart the game.
     menuLockUntil=performance.now()+900;
+    if(mode==='battle'){
+      var won = kind==='win';
+      if(!won) sendMsg('lost');
+      battle.stage='over';
+      battle.title = won ? 'YOU WIN!' : 'YOU LOSE';
+      if(won) sfxLevel(); else sfxGameOver();
+      updateHud();
+      draw();
+      powerLed.style.opacity='.35';
+      renderLobby();
+      return;
+    }
     var title='GAME OVER', sub='', record=false, puzzleLabel=puzzleName(puzzleIdx);
     if(kind==='complete'){
       title='COMPLETE';
@@ -796,6 +839,240 @@
   }
   shareBtn.addEventListener('click', shareResult);
 
+  /* ---------------- online battle ---------------- */
+  // Two friends play the same pieces (the server hands both the same seed). Clearing 2+ lines sends
+  // garbage rows to the rival; whoever tops out first loses. The server only relays messages.
+  var BATTLE_URL = location.hostname==='127.0.0.1' ? 'http://127.0.0.1:8094' : 'https://pocket-tetris-battle.onrender.com';
+  var BATTLE_OPTIONS=['NEW ROOM','JOIN ROOM'];
+  var ATTACK=[0,0,1,2,4];
+  var battleOpt=0, battleSeed=1, rivalBoard='';
+  var battle={stage:'idle', code:'', es:null, players:0, pending:0, meReady:false, peerReady:false, title:'', reason:''};
+  var pid=Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(8)), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+  var battlePanel=$('battlePanel'), battleText=$('battleText'), battleMain=$('battleMain'), battleBack=$('battleBack'), roomInput=$('roomInput');
+  var rivalPanel=$('rivalPanel'), rivalCv=$('rival'), rctx=rivalCv.getContext('2d');
+
+  function battleUiOpen(){ return ['connecting','code','lobby','over'].indexOf(battle.stage)!==-1; }
+  function battleRunning(){ return mode==='battle' && ['playing','clearing','paused','countdown'].indexOf(gameState)!==-1; }
+  function wakeServer(){ fetch(BATTLE_URL+'/health',{cache:'no-store'}).catch(function(){}); }
+  function api(path,opts){
+    return fetch(BATTLE_URL+path, opts||{cache:'no-store'}).then(function(r){
+      if(!r.ok) throw r.status;
+      return r.status===204 ? null : r.json();
+    });
+  }
+  // text/plain keeps these simple CORS requests, so there is no extra preflight round trip.
+  function sendMsg(type,data){
+    if(!battle.code) return;
+    fetch(BATTLE_URL+'/rooms/'+battle.code+'/msg', {method:'POST', headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({pid:pid, type:type, data:data})}).catch(function(){});
+  }
+  function boardString(){
+    var s='';
+    for(var r=0;r<ROWS;r++) for(var x=0;x<COLS;x++) s+=board[r][x];
+    return s;
+  }
+  function sendBoard(){ if(mode==='battle' && gameState!=='ready') sendMsg('board', boardString()); }
+
+  function drawRival(){
+    var c=rivalCv.width/COLS;
+    rctx.fillStyle=pal.bg;
+    rctx.fillRect(0,0,rivalCv.width,rivalCv.height);
+    for(var i=0;i<rivalBoard.length;i++){
+      var v=rivalBoard.charCodeAt(i)-48;
+      if(!v) continue;
+      rctx.fillStyle = v===2 ? pal.mid : pal.dark;
+      rctx.fillRect((i%COLS)*c+1, Math.floor(i/COLS)*c+1, c-2, c-2);
+    }
+  }
+
+  function showBattle(title,text,main,back,withInput){
+    overlayTitle.textContent=title;
+    overlaySub.textContent='';
+    overlayStats.textContent='';
+    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; lcdHelp.hidden=true; shareRow.hidden=true;
+    battlePanel.hidden=false;
+    battleText.textContent=text;
+    battleMain.hidden=!main; battleMain.textContent=main||'';
+    battleBack.hidden=!back; battleBack.textContent=back||'';
+    roomInput.hidden=!withInput;
+    overlay.hidden=false;
+    setStartLabel('START','Старт');
+  }
+
+  function renderLobby(){
+    if(battle.stage==='over'){
+      var head=(battle.reason ? battle.reason+'\n' : '');
+      if(battle.players<2) showBattle(battle.title, head+'ДРУГ ВЫШЕЛ ИЗ КОМНАТЫ', 'INVITE FRIEND', 'LEAVE');
+      else if(battle.meReady) showBattle(battle.title, head+'ЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ REMATCH', null, 'LEAVE');
+      else showBattle(battle.title, head+(battle.peerReady ? 'ДРУГ ХОЧЕТ РЕВАНШ!' : 'СЫГРАЕМ ЕЩЁ?'), 'REMATCH', 'LEAVE');
+      return;
+    }
+    var title='ROOM '+battle.code;
+    if(battle.players<2) showBattle(title, 'ЖДЁМ ДРУГА...\nОТПРАВЬ ЕМУ ПРИГЛАШЕНИЕ\nИЛИ КОД '+battle.code, 'INVITE FRIEND', 'LEAVE');
+    else if(battle.meReady) showBattle(title, 'ТЫ ГОТОВ!\nЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ READY', null, 'LEAVE');
+    else showBattle(title, (battle.peerReady ? 'ДРУГ ГОТОВ!' : 'ДРУГ В КОМНАТЕ!')+'\nНАЖМИ READY, КОГДА ГОТОВ', 'READY', 'LEAVE');
+  }
+
+  function battleError(text){
+    battleLeave(false);
+    battle.stage='code';
+    showBattle('BATTLE', text, null, 'BACK');
+  }
+
+  function battleCreate(){
+    battle.stage='connecting';
+    showBattle('BATTLE','ПОДКЛЮЧАЕМСЯ К СЕРВЕРУ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ', null, 'CANCEL');
+    api('/rooms',{method:'POST'}).then(function(r){
+      if(battle.stage==='connecting') openRoom(r.code);
+    }).catch(function(){
+      if(battle.stage==='connecting') battleError('НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
+    });
+  }
+
+  function battleJoinPrompt(){
+    battle.stage='code';
+    showBattle('JOIN ROOM','ВВЕДИ КОД КОМНАТЫ\nИЗ 4 ЦИФР','JOIN','BACK',true);
+    roomInput.value='';
+    setTimeout(function(){ roomInput.focus(); },50);
+  }
+
+  function battleJoin(code){
+    code=String(code||'').replace(/\D/g,'');
+    if(code.length!==4){ battleText.textContent='НУЖНО 4 ЦИФРЫ'; return; }
+    roomInput.blur();
+    battle.stage='connecting';
+    showBattle('ROOM '+code,'ПОДКЛЮЧАЕМСЯ...\nЭТО ЗАЙМЁТ ДО МИНУТЫ', null, 'CANCEL');
+    api('/rooms/'+code).then(function(r){
+      if(battle.stage!=='connecting') return;
+      if(r.players>=2) battleError('КОМНАТА '+code+'\nУЖЕ ЗАНЯТА');
+      else openRoom(code);
+    }).catch(function(status){
+      if(battle.stage!=='connecting') return;
+      battleError(status===404 ? 'КОМНАТА '+code+'\nНЕ НАЙДЕНА' : 'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
+    });
+  }
+
+  function openRoom(code){
+    battle.code=code; battle.meReady=false; battle.peerReady=false; battle.players=0;
+    var es=new EventSource(BATTLE_URL+'/rooms/'+code+'/events?pid='+pid);
+    battle.es=es;
+    function data(e){ try{ return JSON.parse(e.data); }catch(err){ return {}; } }
+    es.addEventListener('joined', function(e){
+      battle.players=data(e).players;
+      if(battle.stage==='connecting'){ battle.stage='lobby'; renderLobby(); }
+    });
+    es.addEventListener('peer', function(e){
+      var d=data(e);
+      battle.players=d.players;
+      battle.peerReady=false;
+      if(d.left && battleRunning()){ battleResult(true,'ДРУГ ВЫШЕЛ ИЗ ИГРЫ'); return; }
+      if(d.left) battle.meReady=false;
+      if(battle.stage==='lobby' || battle.stage==='over') renderLobby();
+    });
+    es.addEventListener('peer-ready', function(){
+      battle.peerReady=true;
+      if(battle.stage==='lobby' || battle.stage==='over') renderLobby();
+    });
+    es.addEventListener('start', function(e){ battleCountdown(data(e).seed); });
+    es.addEventListener('msg', function(e){ var d=data(e); onBattleMsg(d.type,d.data); });
+    es.onerror=function(){
+      // EventSource reconnects by itself; it only gives up (CLOSED) when the server refuses the room.
+      if(es.readyState===2 && battle.es===es){
+        if(battleRunning()) battleResult(false,'СВЯЗЬ ПОТЕРЯНА');
+        else battleError('СВЯЗЬ С КОМНАТОЙ\nПОТЕРЯНА');
+      }
+    };
+  }
+
+  function battleReady(){
+    if(battle.players<2 || battle.meReady) return;
+    battle.meReady=true;
+    sendMsg('ready');
+    renderLobby();
+  }
+
+  function inviteFriend(){
+    var url=location.origin+'/?room='+battle.code;
+    var text='Сыграем в Pocket Tetris один на один? Комната '+battle.code+':';
+    if(navigator.share) navigator.share({title:'Pocket Tetris', text:text, url:url}).catch(function(){});
+    else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('LINK COPIED',1200); }, function(){});
+  }
+
+  function battleLeave(sendLost){
+    if(sendLost && battleRunning()) sendMsg('lost');
+    if(battle.es){ battle.es.close(); battle.es=null; }
+    battle.stage='idle'; battle.code=''; battle.players=0; battle.pending=0; battle.meReady=false; battle.peerReady=false;
+    rivalBoard='';
+  }
+
+  function backToMenu(){
+    battleLeave(false);
+    gameState='ready';
+    renderMenu();
+    showOverlay('TETRIS','','','main');
+  }
+
+  battleMain.addEventListener('click', function(){
+    if(battle.stage==='code') battleJoin(roomInput.value);
+    else if(battle.players<2) inviteFriend();
+    else battleReady();
+  });
+  battleBack.addEventListener('click', backToMenu);
+  roomInput.addEventListener('input', function(){ roomInput.value=roomInput.value.replace(/\D/g,'').slice(0,4); });
+
+  function battleInput(cmd){
+    if(cmd==='go' && !battleMain.hidden) battleMain.click();
+    else if(cmd==='back' && !battleBack.hidden) battleBack.click();
+  }
+
+  function battleCountdown(seed){
+    battleSeed=seed;
+    battle.stage='countdown';
+    battle.meReady=false; battle.peerReady=false; battle.reason='';
+    rivalBoard='';
+    resetBoard(); piece=null; nextKey=null; heldKey=null;
+    hideOverlay();
+    gameState='countdown';
+    updateHud(); draw(); drawNext(); drawHold(); drawRival();
+    var n=3;
+    showToast('3',700); sfxMove();
+    var timer=setInterval(function(){
+      if(battle.stage!=='countdown'){ clearInterval(timer); return; }
+      n--;
+      if(n>0){ showToast(String(n),700); sfxMove(); return; }
+      clearInterval(timer);
+      showToast('GO!',600);
+      battle.stage='match';
+      battle.pending=0;
+      startGame();
+      sendBoard();
+    },800);
+  }
+
+  function onBattleMsg(type,data){
+    if(type==='board'){ rivalBoard=data; drawRival(); }
+    else if(type==='attack' && battleRunning()){ battle.pending+=data; updateHud(); showToast('INCOMING '+data,700); }
+    else if(type==='lost' && battleRunning()){ battleResult(true,'СОПЕРНИК ПРОИГРАЛ'); }
+  }
+
+  function battleResult(won,reason){
+    battle.reason=reason||'';
+    endGame(won ? 'win' : 'topout');
+  }
+
+  // Incoming garbage rises from the bottom with one gap; returns true if it pushed blocks off the top.
+  function addGarbage(n){
+    var hole=Math.floor(Math.random()*COLS), overflow=false;
+    for(var i=0;i<n;i++){
+      var top=board.shift();
+      if(top.some(function(v){ return v; })) overflow=true;
+      var row=new Array(COLS).fill(2);
+      row[hole]=0;
+      board.push(row);
+    }
+    return overflow;
+  }
+
   function togglePause(){
     if(gameState==='playing'){
       gameState='paused';
@@ -803,6 +1080,7 @@
       stopAllRepeats();
       gesture=null;
       pauseRow=0;
+      restartBtn.hidden = mode==='battle';
       renderPauseMenu();
       showOverlay('PAUSE','',statsLine(),'pause');
     } else if(gameState==='paused'){
@@ -822,6 +1100,7 @@
 
   function quitToMenu(){
     if(gameState!=='paused') return;
+    if(mode==='battle') battleLeave(true);
     if(mode==='marathon' && score>best.marathon){ best.marathon=score; saveBest(); }
     gameState='ready';
     if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
@@ -840,7 +1119,9 @@
     if(!cmd) return;
     if(cmd==='resume'){ togglePause(); return; }
     if(cmd==='go'){ [togglePause, restartGame, quitToMenu][pauseRow](); return; }
-    pauseRow = Math.max(0, Math.min(2, pauseRow + (cmd==='up' ? -1 : 1)));
+    var items = restartBtn.hidden ? [0,2] : [0,1,2];
+    var at = Math.max(0, items.indexOf(pauseRow));
+    pauseRow = items[Math.max(0, Math.min(items.length-1, at + (cmd==='up' ? -1 : 1)))];
     sfxMove();
     renderPauseMenu();
   }
@@ -856,10 +1137,13 @@
     modeValEl.textContent=m.name;
     modeHintEl.textContent = m.id==='daily' ? dayLabel()+' - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ' : m.hint;
     // The second row is the start level in MARATHON, the game length in TIME ATTACK and the level in PUZZLES.
-    var hasOption = m.id==='marathon' || m.id==='ultra' || m.id==='puzzle';
+    var hasOption = m.id==='marathon' || m.id==='ultra' || m.id==='puzzle' || m.id==='battle';
     if(m.id==='ultra'){
       levelSelEl.textContent=DURATIONS[durIdx]+' MINUTES';
       optCapEl.textContent='ДЛИТЕЛЬНОСТЬ';
+    } else if(m.id==='battle'){
+      levelSelEl.textContent=BATTLE_OPTIONS[battleOpt];
+      optCapEl.textContent='КОМНАТА';
     } else if(m.id==='puzzle'){
       levelSelEl.textContent='PUZZLE '+puzzleName(puzzleIdx);
       optCapEl.textContent='УРОВЕНЬ - РЕШЕНО '+solvedPuzzles.length+' ИЗ '+PUZZLES.length;
@@ -891,6 +1175,8 @@
     piece=null; nextKey=null; heldKey=null;
     if(mode==='puzzle') loadPuzzleBoard(puzzleIdx); else resetBoard();
     draw(); drawNext(); drawHold();
+    // The free battle server sleeps when idle; start waking it as soon as BATTLE is picked.
+    if(mode==='battle'){ rivalBoard=''; drawRival(); wakeServer(); }
     updateHud();
   }
 
@@ -903,7 +1189,11 @@
 
   function menuInput(cmd){
     if(!cmd || performance.now()<menuLockUntil) return;
-    if(cmd==='go'){ startGame(); return; }
+    if(cmd==='go'){
+      if(MODES[modeIdx].id==='battle'){ if(battleOpt===0) battleCreate(); else battleJoinPrompt(); }
+      else startGame();
+      return;
+    }
     if(cmd==='up' || cmd==='down'){
       var rows=visibleRows(), at=Math.max(0, rows.indexOf(menuRow));
       menuRow=rows[Math.max(0, Math.min(rows.length-1, at+(cmd==='up' ? -1 : 1)))];
@@ -919,6 +1209,7 @@
         if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
         else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
         else if(MODES[modeIdx].id==='puzzle') stepPuzzle(d);
+        else if(MODES[modeIdx].id==='battle') battleOpt=1-battleOpt;
         else startLevel=(startLevel+d+10)%10;
         selectionChanged();
       }
@@ -961,7 +1252,9 @@
 
   var BUTTON_MENU={drop:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
   var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
+  var BUTTON_BATTLE={cw:'go', start:'go', ccw:'back'};
   function doAction(action){
+    if(battleUiOpen()){ battleInput(BUTTON_BATTLE[action]); return; }
     if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
     if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
     switch(action){
@@ -1005,7 +1298,7 @@
   });
 
   overlay.addEventListener('pointerup', function(e){
-    if(e.target.closest('.menu')) return;
+    if(e.target.closest('.menu') || battleUiOpen()) return;
     if(gameState==='paused') togglePause();
     else if(inMenu()) menuInput('go');
   });
@@ -1013,7 +1306,7 @@
   // iOS shows its magnifier loupe on a long press unless touchstart is cancelled; pointer events still fire.
   // Real buttons are skipped because cancelling touchstart also cancels their click.
   consoleEl.addEventListener('touchstart', function(e){
-    if(e.target.closest('.mute, .mbtn, .mitem')) return;
+    if(e.target.closest('.mute, .mbtn, .mitem, input')) return;
     e.preventDefault();
   }, {passive:false});
 
@@ -1027,6 +1320,14 @@
   var KEY_PAUSE={ArrowUp:'up', ArrowDown:'down', Enter:'go', Space:'go', KeyP:'resume', Escape:'resume'};
   window.addEventListener('keydown',function(e){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(battleUiOpen()){
+      // Digits go into the room code field untouched; only Enter and Escape act on the lobby.
+      var bcmd = e.code==='Enter' ? 'go' : e.code==='Escape' ? 'back' : null;
+      if(!bcmd) return;
+      e.preventDefault();
+      if(!e.repeat) battleInput(bcmd);
+      return;
+    }
     if(inMenu() || gameState==='paused'){
       var cmd=(inMenu() ? KEY_MENU : KEY_PAUSE)[e.code];
       if(!cmd) return;
@@ -1124,6 +1425,11 @@
     } else if(gameState==='playing' && mode==='puzzle'){
       draw();
     } else if(gameState==='playing'){
+      if(mode==='battle'){
+        // Battles speed up every 30 seconds so a match always ends.
+        var lv=Math.min(15, Math.floor(elapsed/30000));
+        if(lv>level){ level=lv; applyPalette(Math.floor(level/5)); updateHud(); sfxLevel(); }
+      }
       dropAcc+=dt;
       if(dropAcc>=speedForLevel(level)){
         dropAcc=0;
@@ -1173,6 +1479,18 @@
   renderMenu();
   showOverlay('TETRIS','','','main');
   powerLed.style.opacity='.35';
+
+  // An invite link (…/?room=1234) drops the friend straight into the room.
+  var linkRoom=new URLSearchParams(location.search).get('room');
+  if(linkRoom && /^\d{4}$/.test(linkRoom)){
+    history.replaceState(null,'',location.pathname);
+    modeIdx=MODES.map(function(m){ return m.id; }).indexOf('battle');
+    selectionChanged();
+    renderMenu();
+    battleJoin(linkRoom);
+  } else if(mode==='battle'){
+    wakeServer();
+  }
   fit();
   window.addEventListener('resize', queueFit);
   window.addEventListener('orientationchange', queueFit);

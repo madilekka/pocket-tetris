@@ -1,0 +1,13 @@
+{
+  "name": "pocket-tetris-battle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Relay server for Pocket Tetris online battles",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
