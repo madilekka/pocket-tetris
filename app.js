@@ -14,7 +14,7 @@
   var colorValEl=$('colorVal'), colorHintEl=$('colorHint'), optCapEl=$('optCap');
   var levelLabel=$('levelLabel'), scoreLabel=$('scoreLabel'), timeLabel=$('timeLabel'), lvWrap=$('lvWrap'), goalText=$('goalText');
   var restartBtn=$('restartBtn');
-  var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
+  var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
@@ -698,7 +698,6 @@
     pauseMenuEl.hidden = kind!=='pause';
     battlePanel.hidden = true;
     overlayPrompt.hidden = kind!=='main';
-    lcdHelp.hidden = gameState!=='ready';
     var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
     shareRow.hidden = !(kind==='main' && gameState==='gameover' && lastResult && !failedPuzzle);
     overlay.hidden=false;
@@ -889,7 +888,7 @@
     overlayTitle.textContent=title;
     overlaySub.textContent='';
     overlayStats.textContent='';
-    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; lcdHelp.hidden=true; shareRow.hidden=true;
+    menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true;
     battlePanel.hidden=false;
     battleText.textContent=text;
     battleMain.hidden=!main; battleMain.textContent=main||'';

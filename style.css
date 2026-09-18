@@ -514,13 +514,6 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
 }
 .pill.pressed{ transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
 
-.lcdhelp{
-  display:none;
-  font-size:6.5px;
-  line-height:2.1;
-  opacity:.75;
-  white-space:pre-line;
-}
 .below{
   display:flex;
   flex-direction:column;
@@ -544,7 +537,4 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   font-size:12px;
   text-align:center;
   color: var(--page-ink);
-}
-@media (hover: none) and (pointer: coarse){
-  .lcdhelp{ display:block; }
 }
