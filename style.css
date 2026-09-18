@@ -294,6 +294,10 @@ body{
   font-size:9px;
   cursor:pointer;
 }
+.mitem.share{
+  border:2px solid var(--lcd-dark);
+  margin-bottom:6px;
+}
 .mhint{
   font-size:6.5px;
   opacity:.75;

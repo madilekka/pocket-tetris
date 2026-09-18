@@ -12,7 +12,7 @@
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
   var menuRows=[$('rowMode'), $('rowLevel')];
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
-  var startPill=$('startPill'), startLabel=$('startLabel');
+  var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -24,16 +24,19 @@
   var MODES=[
     {id:'marathon', name:'MARATHON', hint:'ENDLESS'},
     {id:'sprint', name:'40 LINES', hint:'BEAT THE CLOCK'},
-    {id:'ultra', name:'2 MINUTES', hint:'MAX SCORE'},
+    {id:'ultra', name:'TIME ATTACK', hint:'MAX SCORE'},
     {id:'daily', name:'DAILY', hint:''}
   ];
-  var SPRINT_LINES=40, ULTRA_MS=120000;
-  // Only MARATHON lets the player pick a level. The timed modes use fixed rules so friends' records are comparable:
-  // 40 LINES runs at a steady medium speed; 2 MINUTES starts at 0 and levels up every 5 lines, so it gets hard fast.
-  var SPRINT_LEVEL=5, ULTRA_LINES_PER_LEVEL=5;
+  var SPRINT_LINES=40, SPRINT_LEVEL=5, DAILY_MINUTES=5;
+  var DURATIONS=[5,7,10];
+  // Only MARATHON lets the player pick a level; the other modes have fixed rules so friends' records are comparable.
+  // Timed games start at level 0 and level up every N lines, N = the game's minutes, so difficulty peaks near the end.
   function baseLevel(){ return mode==='marathon' ? startLevel : (mode==='sprint' ? SPRINT_LEVEL : 0); }
   function onTheClock(){ return mode==='ultra' || mode==='daily'; }
-  function linesPerLevel(){ return onTheClock() ? ULTRA_LINES_PER_LEVEL : 10; }
+  function minutes(){ return mode==='daily' ? DAILY_MINUTES : DURATIONS[durIdx]; }
+  function timeLimit(){ return minutes()*60000; }
+  function linesPerLevel(){ return onTheClock() ? minutes() : 10; }
+  function recordId(){ return mode==='ultra' ? 'ta'+DURATIONS[durIdx] : mode; }
 
   /* ---------------- daily challenge ---------------- */
   // Everyone gets the same piece order on the same day: the shuffle is seeded with the date.
@@ -55,19 +58,20 @@
     var k=dayKey();
     if(k===dailyDay) return;
     dailyDay=k;
-    BEST_KEYS.daily='pocket-tetris-daily-'+k;
+    BEST_KEYS.daily='pocket-tetris-daily5-'+k;
     best.daily=parseInt(readStore(BEST_KEYS.daily)||'0',10)||0;
     try{
       for(var i=localStorage.length-1;i>=0;i--){
         var sk=localStorage.key(i);
-        if(sk && sk.indexOf('pocket-tetris-daily-')===0 && sk!==BEST_KEYS.daily) localStorage.removeItem(sk);
+        if(sk && sk.indexOf('pocket-tetris-daily')===0 && sk!==BEST_KEYS.daily) localStorage.removeItem(sk);
       }
     }catch(e){}
   }
-  var modeIdx=0, mode='marathon', startLevel=0, menuRow=0, menuLockUntil=0;
-  var best={marathon:0, sprint:0, ultra:0, daily:0};
-  // Timed-mode keys carry a version: records set before these modes got fixed rules are not comparable.
-  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint-v2', ultra:'pocket-tetris-best-ultra-v2'};
+  var modeIdx=0, mode='marathon', startLevel=0, durIdx=0, menuRow=0, menuLockUntil=0;
+  var best={marathon:0, sprint:0, ta5:0, ta7:0, ta10:0, daily:0};
+  // Versioned sprint key: sprint records set back when its level was selectable are not comparable.
+  var BEST_KEYS={marathon:'pocket-tetris-high', sprint:'pocket-tetris-best-sprint-v2',
+    ta5:'pocket-tetris-best-ta5', ta7:'pocket-tetris-best-ta7', ta10:'pocket-tetris-best-ta10'};
 
   /* ---------------- pieces ---------------- */
   var SHAPES={
@@ -310,12 +314,13 @@
   }
   function timeText(){
     if(mode==='sprint') return fmtTime(elapsed,true);
-    return fmtTime(Math.ceil(Math.max(0,ULTRA_MS-elapsed)/1000)*1000,false);
+    return fmtTime(Math.ceil(Math.max(0,timeLimit()-elapsed)/1000)*1000,false);
   }
   function inGame(){ return gameState==='playing' || gameState==='paused' || gameState==='clearing'; }
   function bestText(){
     if(mode==='sprint') return best.sprint ? fmtTime(best.sprint,true) : '--';
-    return inGame() ? Math.max(best[mode],score) : best[mode];
+    var b=best[recordId()];
+    return inGame() ? Math.max(b,score) : b;
   }
   var lastTimeText='';
   function updateTimeHud(){
@@ -548,6 +553,7 @@
     pauseMenuEl.hidden = kind!=='pause';
     overlayPrompt.hidden = kind!=='main';
     lcdHelp.hidden = gameState!=='ready';
+    shareRow.hidden = !(kind==='main' && gameState==='gameover' && lastResult);
     overlay.hidden=false;
     setStartLabel(kind==='pause' ? 'RESUME' : 'START', kind==='pause' ? 'Продолжить' : 'Старт');
   }
@@ -595,15 +601,18 @@
       sub='TIME '+fmtTime(elapsed,true);
       if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
       sfxLevel();
-    } else if(kind==='timeup'){
-      title = mode==='daily' ? 'DAILY '+dayLabel() : 'TIME UP';
+    } else if(onTheClock()){
+      // In timed games the score counts even after a top-out: survival is part of the challenge, not a reason to lose everything.
+      if(kind==='timeup') title = mode==='daily' ? 'DAILY '+dayLabel() : 'TIME UP';
       sub='SCORE '+score;
-      if(score>best[mode]){ best[mode]=score; record=true; }
-      sfxLevel();
+      var rid=recordId();
+      if(score>best[rid]){ best[rid]=score; record=true; }
+      if(kind==='timeup') sfxLevel(); else sfxGameOver();
     } else {
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
       sfxGameOver();
     }
+    lastResult={mode:mode, kind:kind, score:score, lines:lines, elapsed:elapsed, minutes:minutes(), day:dayLabel()};
     saveBest();
     updateHud();
     draw();
@@ -611,6 +620,30 @@
     var recordText = mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
     showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, statsLine(), 'main');
   }
+
+  /* ---------------- share result ---------------- */
+  var lastResult=null;
+  function fmtScore(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
+  function shareText(r){
+    if(r.mode==='sprint') return r.kind==='complete'
+      ? 'Pocket Tetris: собрал 40 линий за '+fmtTime(r.elapsed,true)+'! Сможешь быстрее?'
+      : 'Pocket Tetris: собрал '+r.lines+' из 40 линий. Попробуй пройти все!';
+    if(r.mode==='daily') return 'Pocket Tetris, испытание дня '+r.day+': '+fmtScore(r.score)+' очков! Сегодня у всех одинаковые фигуры — сможешь больше?';
+    if(r.mode==='ultra') return 'Pocket Tetris, '+r.minutes+' минут: '+fmtScore(r.score)+' очков! Сможешь больше?';
+    return 'Pocket Tetris, марафон: '+fmtScore(r.score)+' очков и '+r.lines+' линий! Сможешь больше?';
+  }
+  function shareResult(){
+    if(!lastResult) return;
+    var text=shareText(lastResult), url=location.origin+'/';
+    if(navigator.share){
+      navigator.share({title:'Pocket Tetris', text:text, url:url}).catch(function(){});
+    } else if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('COPIED',1200); }, function(){ showToast('CANNOT SHARE',1200); });
+    } else {
+      showToast('CANNOT SHARE',1200);
+    }
+  }
+  shareBtn.addEventListener('click', shareResult);
 
   function togglePause(){
     if(gameState==='playing'){
@@ -669,10 +702,11 @@
     refreshDaily();
     modeValEl.textContent=m.name;
     modeHintEl.textContent = m.id==='daily' ? 'TODAY '+dayLabel() : m.hint;
-    levelSelEl.textContent='LEVEL '+startLevel;
-    var hasLevel = m.id==='marathon';
-    if(!hasLevel) menuRow=0;
-    menuRows[1].hidden=!hasLevel;
+    // The second row is the start level in MARATHON and the game length in TIME ATTACK.
+    var hasOption = m.id==='marathon' || m.id==='ultra';
+    levelSelEl.textContent = m.id==='ultra' ? DURATIONS[durIdx]+' MINUTES' : 'LEVEL '+startLevel;
+    if(!hasOption) menuRow=0;
+    menuRows[1].hidden=!hasOption;
     menuRows[0].classList.toggle('focus', menuRow===0);
     menuRows[1].classList.toggle('focus', menuRow===1);
   }
@@ -683,6 +717,7 @@
     applyPalette(Math.floor(level/5));
     writeStore('pocket-tetris-mode', mode);
     writeStore('pocket-tetris-level', String(startLevel));
+    writeStore('pocket-tetris-minutes', String(DURATIONS[durIdx]));
     updateHud();
   }
 
@@ -694,6 +729,7 @@
     else {
       var d = cmd==='inc' ? 1 : -1;
       if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
+      else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
       else startLevel=(startLevel+d+10)%10;
       selectionChanged();
     }
@@ -893,7 +929,7 @@
       elapsed+=dt;
       if(mode!=='marathon') updateTimeHud();
     }
-    if(gameState==='playing' && onTheClock() && elapsed>=ULTRA_MS){
+    if(gameState==='playing' && onTheClock() && elapsed>=timeLimit()){
       endGame('timeup');
     } else if(gameState==='playing'){
       dropAcc+=dt;
@@ -917,6 +953,7 @@
   for(var bk in BEST_KEYS) best[bk]=parseInt(readStore(BEST_KEYS[bk])||'0',10)||0;
   modeIdx=Math.max(0, MODES.map(function(m){ return m.id; }).indexOf(readStore('pocket-tetris-mode')));
   startLevel=Math.min(9, Math.max(0, parseInt(readStore('pocket-tetris-level')||'0',10)||0));
+  durIdx=Math.max(0, DURATIONS.indexOf(parseInt(readStore('pocket-tetris-minutes')||'5',10)));
   mode=MODES[modeIdx].id;
   level=baseLevel();
   muted=readStore('pocket-tetris-muted')==='1';

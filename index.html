@@ -69,6 +69,9 @@
           <div class="overlay" id="overlay">
             <div class="big" id="overlayTitle">TETRIS</div>
             <div class="small" id="overlaySub"></div>
+            <div class="menu" id="shareRow" hidden>
+              <button type="button" class="mrow mitem share" id="shareBtn">SHARE RESULT</button>
+            </div>
             <div class="menu" id="menu">
               <div class="mrow" id="rowMode">
                 <button type="button" class="mbtn" data-row="0" data-dir="-1" aria-label="Предыдущий режим">&lt;</button>
@@ -77,9 +80,9 @@
               </div>
               <div class="mhint" id="modeHint">ENDLESS</div>
               <div class="mrow" id="rowLevel">
-                <button type="button" class="mbtn" data-row="1" data-dir="-1" aria-label="Уровень ниже">&lt;</button>
+                <button type="button" class="mbtn" data-row="1" data-dir="-1" aria-label="Меньше">&lt;</button>
                 <span class="mval" id="levelSel">LEVEL 0</span>
-                <button type="button" class="mbtn" data-row="1" data-dir="1" aria-label="Уровень выше">&gt;</button>
+                <button type="button" class="mbtn" data-row="1" data-dir="1" aria-label="Больше">&gt;</button>
               </div>
             </div>
             <div class="menu" id="pauseMenu" hidden>
