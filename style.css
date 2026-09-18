@@ -33,14 +33,25 @@
 
 :root{
   --page-bg:#242320;
+  --page-ink:#c9c6b0;
+  --page-btn-lo:#726f5e;
+  --page-btn-ink:#2b2a26;
+  --bezel:#38372f;
+  --bezel-lo:#211f1a;
+  /* Console colors: app.js swaps these when the player picks an unlocked console color. */
   --shell:#a9a692;
   --shell-hi:#c9c6b0;
   --shell-lo:#726f5e;
-  --bezel:#38372f;
-  --bezel-lo:#211f1a;
-  --btn-red:#a83232;
-  --btn-red-lo:#7a2222;
   --ink:#2b2a26;
+  --mark:#a83232;
+  --btn-hi:#c95555;
+  --btn:#a83232;
+  --btn-lo:#7a2222;
+  --btn-shadow:#5e1717;
+  --btn-ink:#2a0e0e;
+  --pill-hi:#918e7c;
+  --pill-lo:#5f5c4d;
+  --pill-ink:#2b2a26;
   --lcd-bg:#9bbc0f;
   --lcd-light:#8bac0f;
   --lcd-mid:#306230;
@@ -63,7 +74,7 @@ body{
     calc(16px + env(safe-area-inset-bottom, 0px))
     calc(16px + env(safe-area-inset-left, 0px));
   font: 13px/1.6 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  color: var(--shell-hi);
+  color: var(--page-ink);
   overflow-x:hidden;
   touch-action: manipulation;
   overscroll-behavior: none;
@@ -119,21 +130,24 @@ body{
   font-family: var(--pix);
   font-size: 15px;
   line-height:1;
-  color: var(--btn-red);
+  color: var(--mark);
   text-shadow: 1px 1px 0 rgba(0,0,0,.25);
 }
 .mute{
-  width:28px; height:28px;
+  position:relative;
+  width:30px; height:30px;
   padding:0;
   border-radius:50%;
   border:1px solid var(--shell-lo);
   background: var(--shell-hi);
   color: var(--ink);
-  font-size:13px;
+  font-size:11px;
+  font-weight:600;
   line-height:1;
   display:flex; align-items:center; justify-content:center;
   cursor:pointer;
 }
+.mute::after{ content:""; position:absolute; inset:-8px; border-radius:50%; }
 .mute[aria-pressed="true"]{ opacity:.55; }
 
 .bezel{
@@ -294,6 +308,7 @@ body{
   font-size:9px;
   cursor:pointer;
 }
+.mrow.locked .mval{ opacity:.45; }
 .mitem.share{
   border:2px solid var(--lcd-dark);
   margin-bottom:6px;
@@ -410,15 +425,15 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   padding:0;
   border-radius:50%;
   border:none;
-  background: radial-gradient(circle at 35% 30%, #c95555, var(--btn-red) 55%, var(--btn-red-lo) 100%);
-  color:#2a0e0e;
+  background: radial-gradient(circle at 35% 30%, var(--btn-hi), var(--btn) 55%, var(--btn-lo) 100%);
+  color: var(--btn-ink);
   font-family: var(--pix);
   font-size:15px;
-  box-shadow: 0 3px 0 #5e1717, 0 1px 0 rgba(255,255,255,.15) inset;
+  box-shadow: 0 3px 0 var(--btn-shadow), 0 1px 0 rgba(255,255,255,.15) inset;
   cursor:pointer;
 }
 .abgroup button::after{ content:""; position:absolute; inset:-9px; border-radius:50%; }
-.abgroup button.pressed{ transform: translateY(2px); box-shadow: 0 1px 0 #5e1717 inset; }
+.abgroup button.pressed{ transform: translateY(2px); box-shadow: 0 1px 0 var(--btn-shadow) inset; }
 .abgroup .b{ margin-top:22px; }
 
 .meta{
@@ -433,7 +448,7 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   padding:0;
   border:none;
   border-radius:12px;
-  background: linear-gradient(155deg,#918e7c,#5f5c4d);
+  background: linear-gradient(155deg, var(--pill-hi), var(--pill-lo));
   box-shadow: 0 2px 0 rgba(0,0,0,.35);
   display:flex; align-items:center; justify-content:center;
   cursor:pointer;
@@ -443,7 +458,7 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   font-family: var(--pix);
   font-size:8px;
   letter-spacing:.5px;
-  color: var(--ink);
+  color: var(--pill-ink);
 }
 .pill.pressed{ transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
 
@@ -464,19 +479,19 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   padding:11px 18px;
   border:none;
   border-radius:6px;
-  background: var(--shell-hi);
-  color: var(--ink);
+  background: var(--page-ink);
+  color: var(--page-btn-ink);
   font: 600 13px/1 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  box-shadow: 0 2px 0 var(--shell-lo);
+  box-shadow: 0 2px 0 var(--page-btn-lo);
   cursor:pointer;
   touch-action: manipulation;
 }
-.install:active{ transform: translateY(1px); box-shadow: 0 1px 0 var(--shell-lo); }
+.install:active{ transform: translateY(1px); box-shadow: 0 1px 0 var(--page-btn-lo); }
 .ios-hint{
   margin:0;
   font-size:12px;
   text-align:center;
-  color: var(--shell-hi);
+  color: var(--page-ink);
 }
 @media (hover: none) and (pointer: coarse){
   .lcdhelp{ display:block; }

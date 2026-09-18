@@ -10,7 +10,8 @@
   var linesVal=$('linesVal'), levelVal=$('levelVal'), scoreVal=$('scoreVal'), topVal=$('topVal'), topLabel=$('topLabel');
   var timePanel=$('timePanel'), timeVal=$('timeVal'), lvBar=$('lvBar'), lvLeft=$('lvLeft');
   var menuEl=$('menu'), modeValEl=$('modeVal'), modeHintEl=$('modeHint'), levelSelEl=$('levelSel');
-  var menuRows=[$('rowMode'), $('rowLevel')];
+  var menuRows=[$('rowMode'), $('rowLevel'), $('rowColor')];
+  var colorValEl=$('colorVal'), colorHintEl=$('colorHint');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt'), lcdHelp=$('lcdHelp');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn');
   var muteBtn=$('muteBtn'), powerLed=$('powerLed');
@@ -67,6 +68,33 @@
       }
     }catch(e){}
   }
+  /* ---------------- console colors, unlocked by achievements ---------------- */
+  var SKIN_VARS=['--shell','--shell-hi','--shell-lo','--ink','--mark','--btn-hi','--btn','--btn-lo','--btn-shadow','--btn-ink','--pill-hi','--pill-lo','--pill-ink'];
+  var SKINS=[
+    {id:'classic', name:'CLASSIC', how:'', c:['#a9a692','#c9c6b0','#726f5e','#2b2a26','#a83232','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#918e7c','#5f5c4d','#2b2a26']},
+    {id:'purple', name:'PURPLE', how:'ОТКРОЕТСЯ ЗА ПЕРВЫЙ ТЕТРИС', c:['#6d5a9c','#9b89c9','#45386a','#1c1530','#f2d4ff','#d9607a','#b8324a','#7d2033','#561626','#2a0a12','#7f6daf','#4a3d73','#e9e2ff']},
+    {id:'teal', name:'TEAL', how:'ОТКРОЕТСЯ ЗА КОМБО X3', c:['#3d8c86','#6cb8b1','#255e5a','#0d2624','#f5e27a','#f2d66b','#d9b43a','#9c7f1f','#6e5815','#3a2e06','#4f9c96','#2c6a65','#e2f5f3']},
+    {id:'yellow', name:'YELLOW', how:'ОТКРОЕТСЯ ЗА ФИНИШ 40 LINES', c:['#d9b93c','#f1d970','#9d8526','#3a2f08','#2f5ea8','#5d8fd6','#3a6db5','#274c80','#1b3559','#0c1a2e','#c7a93a','#8c7420','#2e2506']},
+    {id:'red', name:'RED', how:'ОТКРОЕТСЯ ЗА DAILY ДО КОНЦА', c:['#b3403d','#d7706b','#7c2826','#2e0c0b','#f6e7c8','#5a5852','#3b3a36','#22211e','#121110','#d8d4c8','#9a3532','#6a2220','#f6e7c8']},
+    {id:'black', name:'BLACK', how:'ОТКРОЕТСЯ ЗА 100 ЛИНИЙ В MARATHON', c:['#2f2f35','#4b4b54','#18181c','#c9c9d1','#e0474a','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#45454d','#25252a','#d6d6de']},
+    {id:'gold', name:'GOLD', how:'ОТКРОЕТСЯ ЗА 50 000 ОЧКОВ', c:['#c8a24a','#ebd18b','#8a6c26','#2e2206','#7a1f1f','#b54848','#8e2a2a','#611b1b','#401111','#f3dca0','#b08d3c','#7a6020','#2e2206']}
+  ];
+  var unlockedSkins=['classic'], skinIdx=0;
+  function skinIndex(id){ for(var i=0;i<SKINS.length;i++) if(SKINS[i].id===id) return i; return -1; }
+  function isUnlocked(id){ return unlockedSkins.indexOf(id)!==-1; }
+  function applySkin(id){
+    var s=SKINS[Math.max(0,skinIndex(id))], st=document.documentElement.style;
+    for(var i=0;i<SKIN_VARS.length;i++) st.setProperty(SKIN_VARS[i], s.c[i]);
+  }
+  function unlockSkin(id){
+    if(isUnlocked(id)) return;
+    unlockedSkins.push(id);
+    writeStore('pocket-tetris-colors', JSON.stringify(unlockedSkins));
+    var name=SKINS[skinIndex(id)].name;
+    // Shown after the line-clear toast so the two messages don't overwrite each other.
+    setTimeout(function(){ showToast('NEW COLOR!\n'+name,1800); sfxLevel(); },900);
+  }
+
   var modeIdx=0, mode='marathon', startLevel=0, durIdx=0, menuRow=0, menuLockUntil=0;
   var best={marathon:0, sprint:0, ta5:0, ta7:0, ta10:0, daily:0};
   // Versioned sprint key: sprint records set back when its level was selectable are not comparable.
@@ -232,6 +260,10 @@
       if(leveledUp){ level=newLevel; applyPalette(Math.floor(level/5)); }
     }
     if(combo>0) msg+='\nCOMBO x'+combo;
+    if(cleared===4) unlockSkin('purple');
+    if(combo>=3) unlockSkin('teal');
+    if(mode==='marathon' && lines>=100) unlockSkin('black');
+    if(score>=50000) unlockSkin('gold');
     updateHud();
     sfxClear(cleared);
     if(leveledUp) sfxLevel();
@@ -504,21 +536,49 @@
   function sfxLevel(){ beep(880,0.12,'square',0.05); beep(1175,0.14,'square',0.05,0.1); }
   function sfxGameOver(){ beep(220,0.18,'sawtooth',0.05); beep(165,0.22,'sawtooth',0.05,0.16); beep(110,0.35,'sawtooth',0.05,0.34); }
 
-  var TUNE=[
-    [659,.2],[493,.1],[523,.2],[587,.2],[523,.1],[493,.1],[440,.2],[440,.1],[523,.2],[659,.2],[587,.1],[523,.1],[493,.3],[523,.2],[587,.2],[659,.2],
-    [523,.2],[440,.2],[440,.2],[0,.2],[587,.2],[698,.1],[880,.2],[784,.1],[698,.1],[659,.3],[523,.1],[659,.2],[587,.1],[523,.1],[493,.2],[493,.1],
-    [523,.2],[587,.2],[659,.2],[523,.2],[440,.2],[440,.2],[0,.4]
+  // Notes as "D5:2" = pitch and length in eighths; R is a rest.
+  function noteFreq(n){
+    var m=/^([A-G])(#?)(\d)$/.exec(n);
+    var semi={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1]] + (m[2] ? 1 : 0);
+    return 440*Math.pow(2, (12*(+m[3]+1)+semi-69)/12);
+  }
+  function parseTune(str,eighth){
+    return str.split(/[\s|]+/).filter(Boolean).map(function(t){
+      var p=t.split(':');
+      return [p[0]==='R' ? 0 : noteFreq(p[0]), (+p[1])*eighth];
+    });
+  }
+  // All melodies are public domain: a 19th-century folk song, Petzold (d. 1733) and Grieg (d. 1907).
+  var TRACKS=[
+    {name:'KOROBEINIKI', notes:parseTune(
+      'E5:2 B4:1 C5:1 D5:2 C5:1 B4:1 | A4:2 A4:1 C5:1 E5:2 D5:1 C5:1 | B4:3 C5:1 D5:2 E5:2 | C5:2 A4:2 A4:4 |'+
+      'R:1 D5:2 F5:1 A5:2 G5:1 F5:1 | E5:3 C5:1 E5:2 D5:1 C5:1 | B4:2 B4:1 C5:1 D5:2 E5:2 | C5:2 A4:2 A4:2 R:2', 0.1)},
+    {name:'MINUET', notes:parseTune(
+      'D5:2 G4:1 A4:1 B4:1 C5:1 | D5:2 G4:2 G4:2 | E5:2 C5:1 D5:1 E5:1 F#5:1 | G5:2 G4:2 G4:2 |'+
+      'C5:2 D5:1 C5:1 B4:1 A4:1 | B4:2 C5:1 B4:1 A4:1 G4:1 | F#4:2 G4:1 A4:1 B4:1 G4:1 | A4:6 |'+
+      'D5:2 G4:1 A4:1 B4:1 C5:1 | D5:2 G4:2 G4:2 | E5:2 C5:1 D5:1 E5:1 F#5:1 | G5:2 G4:2 G4:2 |'+
+      'C5:2 D5:1 C5:1 B4:1 A4:1 | B4:2 C5:1 B4:1 A4:1 G4:1 | A4:2 B4:1 A4:1 G4:1 F#4:1 | G4:6', 0.16)},
+    {name:'MOUNTAIN KING', notes:parseTune(
+      'B3:1 C#4:1 D4:1 E4:1 F#4:1 D4:1 F#4:2 | F4:1 C#4:1 F4:2 E4:1 C4:1 E4:2 |'+
+      'B3:1 C#4:1 D4:1 E4:1 F#4:1 D4:1 F#4:1 B4:1 | A4:1 F#4:1 D4:1 F#4:1 A4:4 |'+
+      'B4:1 C#5:1 D5:1 E5:1 F#5:1 D5:1 F#5:2 | F5:1 C#5:1 F5:2 E5:1 C5:1 E5:2 |'+
+      'B4:1 C#5:1 D5:1 E5:1 F#5:1 D5:1 F#5:1 B5:1 | A5:1 F#5:1 D5:1 F#5:1 A5:4', 0.14)}
   ];
+  // The sound button cycles: music 1, 2, 3, sound effects only, everything off.
+  var SOUND_LABELS=['♪1','♪2','♪3','FX','×'];
+  var SOUND_TOASTS=['MUSIC 1\nKOROBEINIKI','MUSIC 2\nMINUET','MUSIC 3\nMOUNTAIN KING','NO MUSIC\nSOUNDS ON','SOUND OFF'];
+  var soundMode=0;
+
   var tuneTimeout=null, tuneBus=null;
   function scheduleTune(){
     stopTune();
-    if(muted||!actx) return;
+    if(muted || soundMode>2 || !actx) return;
     tuneBus=actx.createGain();
     tuneBus.connect(actx.destination);
-    var t=0;
-    for(var i=0;i<TUNE.length;i++){
-      if(TUNE[i][0]>0) beep(TUNE[i][0],TUNE[i][1]*0.9,'square',0.028,t,tuneBus);
-      t+=TUNE[i][1];
+    var notes=TRACKS[soundMode].notes, t=0;
+    for(var i=0;i<notes.length;i++){
+      if(notes[i][0]>0) beep(notes[i][0],notes[i][1]*0.9,'square',0.028,t,tuneBus);
+      t+=notes[i][1];
     }
     tuneTimeout=setTimeout(function(){ if(gameState==='playing') scheduleTune(); }, t*1000);
   }
@@ -530,14 +590,17 @@
 
   function renderMute(){
     muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-    muteBtn.textContent = muted ? '×' : '♪';
+    muteBtn.textContent = SOUND_LABELS[soundMode];
   }
   muteBtn.addEventListener('click',function(){
-    muted=!muted;
-    writeStore('pocket-tetris-muted', muted ? '1' : '0');
+    soundMode=(soundMode+1)%SOUND_LABELS.length;
+    muted = soundMode===4;
+    writeStore('pocket-tetris-sound', String(soundMode));
     renderMute();
-    if(muted) stopTune();
-    else { ensureAudio(); if(gameState==='playing') scheduleTune(); }
+    stopTune();
+    if(!muted) ensureAudio();
+    if(gameState==='playing') scheduleTune();
+    showToast(SOUND_TOASTS[soundMode],1300);
   });
 
   ['pointerup','touchend','click','keydown'].forEach(function(type){
@@ -613,6 +676,9 @@
       sfxGameOver();
     }
     lastResult={mode:mode, kind:kind, score:score, lines:lines, elapsed:elapsed, minutes:minutes(), day:dayLabel()};
+    if(kind==='complete') unlockSkin('yellow');
+    if(kind==='timeup' && mode==='daily') unlockSkin('red');
+    if(score>=50000) unlockSkin('gold');
     saveBest();
     updateHud();
     draw();
@@ -705,11 +771,16 @@
     // The second row is the start level in MARATHON and the game length in TIME ATTACK.
     var hasOption = m.id==='marathon' || m.id==='ultra';
     levelSelEl.textContent = m.id==='ultra' ? DURATIONS[durIdx]+' MINUTES' : 'LEVEL '+startLevel;
-    if(!hasOption) menuRow=0;
+    if(!hasOption && menuRow===1) menuRow=0;
     menuRows[1].hidden=!hasOption;
-    menuRows[0].classList.toggle('focus', menuRow===0);
-    menuRows[1].classList.toggle('focus', menuRow===1);
+    var sk=SKINS[skinIdx], open=isUnlocked(sk.id);
+    colorValEl.textContent=sk.name;
+    colorHintEl.textContent = open ? 'ОТКРЫТО '+unlockedSkins.length+' ИЗ '+SKINS.length : sk.how;
+    menuRows[2].classList.toggle('locked', !open);
+    for(var i=0;i<menuRows.length;i++) menuRows[i].classList.toggle('focus', menuRow===i);
   }
+
+  function visibleRows(){ return menuRows[1].hidden ? [0,2] : [0,1,2]; }
 
   function selectionChanged(){
     mode=MODES[modeIdx].id;
@@ -724,14 +795,21 @@
   function menuInput(cmd){
     if(!cmd || performance.now()<menuLockUntil) return;
     if(cmd==='go'){ startGame(); return; }
-    if(cmd==='up') menuRow=0;
-    else if(cmd==='down') menuRow=1;
-    else {
+    if(cmd==='up' || cmd==='down'){
+      var rows=visibleRows(), at=Math.max(0, rows.indexOf(menuRow));
+      menuRow=rows[Math.max(0, Math.min(rows.length-1, at+(cmd==='up' ? -1 : 1)))];
+    } else {
       var d = cmd==='inc' ? 1 : -1;
-      if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
-      else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
-      else startLevel=(startLevel+d+10)%10;
-      selectionChanged();
+      if(menuRow===2){
+        skinIdx=(skinIdx+d+SKINS.length)%SKINS.length;
+        var sk=SKINS[skinIdx];
+        if(isUnlocked(sk.id)){ applySkin(sk.id); writeStore('pocket-tetris-color', sk.id); }
+      } else {
+        if(menuRow===0) modeIdx=(modeIdx+d+MODES.length)%MODES.length;
+        else if(MODES[modeIdx].id==='ultra') durIdx=(durIdx+d+DURATIONS.length)%DURATIONS.length;
+        else startLevel=(startLevel+d+10)%10;
+        selectionChanged();
+      }
     }
     sfxMove();
     renderMenu();
@@ -956,8 +1034,17 @@
   durIdx=Math.max(0, DURATIONS.indexOf(parseInt(readStore('pocket-tetris-minutes')||'5',10)));
   mode=MODES[modeIdx].id;
   level=baseLevel();
-  muted=readStore('pocket-tetris-muted')==='1';
+  var savedSound=parseInt(readStore('pocket-tetris-sound'),10);
+  soundMode = (savedSound>=0 && savedSound<SOUND_LABELS.length) ? savedSound : (readStore('pocket-tetris-muted')==='1' ? 4 : 0);
+  muted = soundMode===4;
   renderMute();
+  try{
+    var savedSkins=JSON.parse(readStore('pocket-tetris-colors')||'[]');
+    if(Array.isArray(savedSkins)) savedSkins.forEach(function(id){ if(skinIndex(id)>0 && !isUnlocked(id)) unlockedSkins.push(id); });
+  }catch(e){}
+  var savedSkin=readStore('pocket-tetris-color');
+  skinIdx = (savedSkin && isUnlocked(savedSkin)) ? skinIndex(savedSkin) : 0;
+  applySkin(SKINS[skinIdx].id);
   resetBoard();
   applyPalette(Math.floor(level/5));
   updateHud();
