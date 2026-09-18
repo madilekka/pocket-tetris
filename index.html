@@ -939,9 +939,8 @@
   var REPEATING={left:true, right:true, soft:true};
   var repeatTimers={}, keysDown={};
 
-  function startRepeat(action,isTouch){
+  function startRepeat(action,delay){
     stopRepeat(action);
-    var delay = action==='soft' ? DAS_SOFT : (isTouch ? DAS_TOUCH : DAS_KEY);
     repeatTimers[action]=setTimeout(function rep(){
       doAction(action);
       repeatTimers[action]=setTimeout(rep,ARR);
@@ -981,7 +980,9 @@
       activePointer=e.pointerId;
       btn.classList.add('pressed');
       doAction(action);
-      if(REPEATING[action]) startRepeat(action, e.pointerType!=='mouse');
+      if(action==='soft') startRepeat(action, DAS_SOFT);
+      // Windows touchpad tap-to-click holds the button ~0.2 s, which would read as a hold, so mouse clicks never slide sideways.
+      else if(REPEATING[action] && e.pointerType!=='mouse') startRepeat(action, DAS_TOUCH);
     });
     function release(e){
       if(activePointer===null || e.pointerId!==activePointer) return;
@@ -1011,7 +1012,7 @@
     if(keysDown[e.code]) return;
     keysDown[e.code]=true;
     doAction(action);
-    if(REPEATING[action]) startRepeat(action, false);
+    if(REPEATING[action]) startRepeat(action, action==='soft' ? DAS_SOFT : DAS_KEY);
   });
   window.addEventListener('keyup',function(e){
     var action=KEYMAP[e.code];
