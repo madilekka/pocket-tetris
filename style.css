@@ -515,7 +515,7 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
 .meta{
   display:flex;
   justify-content:center;
-  gap:30px;
+  gap:18px;
   padding-top:8px;
 }
 .pill{
@@ -536,6 +536,9 @@ button:focus-visible{ outline:2px solid #f3e9c6; outline-offset:3px; }
   letter-spacing:.5px;
   color: var(--pill-ink);
 }
+/* HINT sits between HOLD and START in puzzles; its label is longer, and it dims once used. */
+.pill.hintpill{ width:auto; padding:0 12px; }
+.pill.hintpill.used{ opacity:.45; }
 .pill.pressed{ transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
 
 .below{

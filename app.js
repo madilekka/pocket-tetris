@@ -15,7 +15,7 @@
   var menuRows=[$('rowMode'), $('rowLevel'), $('rowColor')];
   var colorValEl=$('colorVal'), colorHintEl=$('colorHint'), optCapEl=$('optCap');
   var levelLabel=$('levelLabel'), scoreLabel=$('scoreLabel'), timeLabel=$('timeLabel'), lvWrap=$('lvWrap'), goalText=$('goalText');
-  var restartBtn=$('restartBtn'), hintBtn=$('hintBtn'), hintRetryBtn=$('hintRetryBtn');
+  var restartBtn=$('restartBtn'), hintPill=$('hintPill'), hintRetryBtn=$('hintRetryBtn');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn'), topBtn=$('topBtn');
   var topPanel=$('topPanel'), topText=$('topText'), topList=$('topList'), nameInput=$('nameInput');
@@ -81,7 +81,7 @@
       tUpdate:'ОБНОВИ СТРАНИЦУ, ЧТОБЫ\nРЕЗУЛЬТАТ ПОПАЛ В СПИСОК', tNameLost:'ИМЯ {0} УЖЕ ЗАНЯТО,\nВЫБЕРИ ДРУГОЕ', tNameTaken:'ИМЯ {0} УЖЕ ЗАНЯТО',
       tBadName:'ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ', tBadCode:'В КОДЕ 16 ЗНАКОВ:\nЦИФРЫ И БУКВЫ A-F', tNoCode:'ТАКОЙ КОД НЕ НАЙДЕН',
       ariaCode:'Код восстановления', ariaName:'Имя в таблице рекордов',
-      hintOn:'ПОДСКАЗКА:\nСТАВЬ ФИГУРУ\nНА ПОДСВЕТКУ', hintHold:'НАЖМИ «ЗАПАС»', hintOff:'ФИГУРА НЕ ТАМ -\nПОДСКАЗКА ВЫКЛЮЧЕНА',
+      hintOn:'ПОДСКАЗКА:\nСТАВЬ ФИГУРУ\nНА ПОДСВЕТКУ', hintHold:'НАЖМИ «ЗАПАС»', hintOff:'ФИГУРА НЕ ТАМ -\nПОДСКАЗКА ВЫКЛЮЧЕНА', hintSpent:'ПОДСКАЗКА ДЛЯ ЭТОГО\nУРОВНЯ УЖЕ БЫЛА', ariaHint:'Подсказка: показать, куда ставить фигуры',
       langName:'РУССКИЙ', install:'Установить как приложение',
       iosHint:'Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b>',
       ariaSound:'Звук', ariaLang:'Язык: русский. Нажми, чтобы переключить на английский', ariaPrevMode:'Предыдущий режим', ariaNextMode:'Следующий режим',
@@ -139,7 +139,7 @@
       tUpdate:'RELOAD THE PAGE TO GET\nYOUR SCORE ON THE LIST', tNameLost:'THE NAME {0} IS TAKEN,\nPICK ANOTHER', tNameTaken:'THE NAME {0} IS TAKEN',
       tBadName:'ONLY LETTERS AND DIGITS,\nUP TO 10', tBadCode:'THE CODE HAS 16 CHARACTERS:\nDIGITS AND LETTERS A-F', tNoCode:'NO SUCH CODE',
       ariaCode:'Recovery code', ariaName:'Name for the daily top',
-      hintOn:'HINT: PUT THE\nPIECE ON THE\nMARKED CELLS', hintHold:'PRESS HOLD', hintOff:'OFF THE PLAN -\nTHE HINT IS OFF',
+      hintOn:'HINT: PUT THE\nPIECE ON THE\nMARKED CELLS', hintHold:'PRESS HOLD', hintOff:'OFF THE PLAN -\nTHE HINT IS OFF', hintSpent:'NO HINT LEFT\nFOR THIS LEVEL', ariaHint:'Hint: show where the pieces go',
       langName:'ENGLISH', install:'Install as an app',
       iosHint:'To install on iPhone: tap <b>•••</b> or the Share icon (a square with an up arrow) &rarr; <b>Add to Home Screen</b>',
       ariaSound:'Sound', ariaLang:'Language: English. Tap to switch to Russian', ariaPrevMode:'Previous mode', ariaNextMode:'Next mode',
@@ -229,6 +229,16 @@
     writeStore('pocket-tetris-hints', JSON.stringify(usedHints));
     startGame(true);
   }
+  // The HINT button on the console shows only in puzzles, dimmed once the level's hint is spent.
+  function renderHintPill(){
+    hintPill.hidden = mode!=='puzzle';
+    hintPill.classList.toggle('used', !hintAvailable());
+  }
+  hintPill.addEventListener('click', function(){
+    if(topOpen() || battleUiOpen() || (inMenu() && performance.now()<menuLockUntil)) return;
+    if(hintAvailable()) useHint();
+    else showToast(hint ? t('hintOn') : t('hintSpent'),1800);
+  });
   function hintStep(){ return hint && hint.steps[hint.at]; }
   function hintPrompt(){ var st=hintStep(); if(st && st.hold) showToast(t('hintHold'),1800); }
   function hintOff(){ hint=null; showToast(t('hintOff'),1800); }
@@ -425,6 +435,7 @@
     setNum(timeVal,t);
   }
   function updateHud(){
+    renderHintPill();
     linesVal.textContent=String(lines).padStart(3,'0');
     var isPuzzle = mode==='puzzle', isBattle = mode==='battle';
     lvWrap.hidden = isPuzzle || isBattle;
@@ -1473,7 +1484,6 @@
       gesture=null;
       pauseRow=0;
       restartBtn.hidden = mode==='battle';
-      hintBtn.hidden = !hintAvailable();
       battle.pausedAt=performance.now();
       renderPauseMenu();
       showOverlay(t('pause'),'',statsLine(),'pause');
@@ -1486,10 +1496,10 @@
 
   /* ---------------- pause menu: continue or quit ---------------- */
   var pauseRow=0;
-  function pauseItems(){ return [resumeBtn, hintBtn, restartBtn, quitBtn].filter(function(b){ return !b.hidden; }); }
+  function pauseItems(){ return [resumeBtn, restartBtn, quitBtn].filter(function(b){ return !b.hidden; }); }
   function renderPauseMenu(){
     var items=pauseItems();
-    [resumeBtn, hintBtn, restartBtn, quitBtn].forEach(function(b){ b.classList.toggle('focus', items.indexOf(b)===pauseRow); });
+    [resumeBtn, restartBtn, quitBtn].forEach(function(b){ b.classList.toggle('focus', items.indexOf(b)===pauseRow); });
   }
 
   function quitToMenu(){
@@ -1523,7 +1533,6 @@
   resumeBtn.addEventListener('click', function(){ if(gameState==='paused') togglePause(); });
   restartBtn.addEventListener('click', restartGame);
   quitBtn.addEventListener('click', quitToMenu);
-  hintBtn.addEventListener('click', function(){ if(gameState==='paused') useHint(); });
   hintRetryBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) useHint(); });
 
   /* ---------------- menu: mode and start level ---------------- */
@@ -1704,7 +1713,7 @@
   // iOS shows its magnifier loupe on a long press unless touchstart is cancelled; pointer events still fire.
   // Real buttons are skipped because cancelling touchstart also cancels their click.
   consoleEl.addEventListener('touchstart', function(e){
-    if(e.target.closest('.mute, .mbtn, .mitem, input')) return;
+    if(e.target.closest('.mute, .mbtn, .mitem, .hintpill, input')) return;
     e.preventDefault();
   }, {passive:false});
 

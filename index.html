@@ -104,7 +104,6 @@
             </div>
             <div class="menu" id="pauseMenu" hidden>
               <button type="button" class="mrow mitem" id="resumeBtn" data-t="continue">CONTINUE</button>
-              <button type="button" class="mrow mitem" id="hintBtn" data-t="hint" hidden>HINT</button>
               <button type="button" class="mrow mitem" id="restartBtn" data-t="restart">RESTART</button>
               <button type="button" class="mrow mitem" id="quitBtn" data-t="quit">QUIT TO MENU</button>
             </div>
@@ -143,6 +142,7 @@
       </div>
       <div class="meta">
         <button type="button" class="pill" data-action="hold" data-ta="ariaHold" aria-label="Отложить фигуру"><span data-t="pillHold">HOLD</span></button>
+        <button type="button" class="pill hintpill" id="hintPill" data-ta="ariaHint" aria-label="Подсказка" hidden><span data-t="hint">HINT</span></button>
         <button type="button" class="pill" id="startPill" data-action="start" aria-label="Старт"><span id="startLabel">START</span></button>
       </div>
     </div>
