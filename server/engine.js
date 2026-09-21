@@ -82,6 +82,18 @@
   function dailyRules(day){
     return {startLevel:0, linesPerLevel:5, timeLimitTicks:5*60*TICKS_PER_SECOND, seed:Math.imul(day, 2654435761)};
   }
+  // The rules of the scored modes, built in one place so the game and the server (replaying a friend's
+  // challenge) agree on them. opt is the start level in MARATHON and the minutes in TIME ATTACK.
+  var DIG_ROWS=10;
+  function modeRules(mode, opt, seed){
+    switch(mode){
+      case 'marathon': return {startLevel:opt, linesPerLevel:10, seed:seed};
+      case 'sprint': return {startLevel:2, linesPerLevel:10, goalLines:40, seed:seed};
+      case 'ultra': return {startLevel:0, linesPerLevel:opt, timeLimitTicks:opt*60*TICKS_PER_SECOND, seed:seed};
+      case 'dig': return {startLevel:2, linesPerLevel:10, dig:DIG_ROWS, seed:seed};
+    }
+    return null;
+  }
 
   // Inputs, as recorded: one letter per action, and A..J for 1..10 incoming garbage rows in a battle.
   var ACTION_CODES={left:'l', right:'r', soft:'s', cw:'c', ccw:'a', drop:'d', hold:'h'};
@@ -97,11 +109,27 @@
       score:0, lines:0, level:rules.startLevel||0, combo:-1, backToBack:false,
       tick:0, state:'playing', over:null, clearRows:null, clearLeft:0,
       gravityAcc:0, lockTimer:0, lockResets:0, pieceCounts:{}, serial:0, pending:0,
-      queue:rules.puzzle ? rules.puzzle.pieces.split('') : [], events:[]
+      queue:rules.puzzle ? rules.puzzle.pieces.split('') : [], events:[], digLeft:rules.dig||0
     };
     var random = typeof rules.seed==='number' ? seededRandom(rules.seed) : Math.random;
     var garbageRandom = typeof rules.seed==='number' ? seededRandom(rules.seed ^ 0x5bd1e995) : Math.random;
     var bag=[], log=[], lastLogTick=0;
+    // DIG: the board starts with rows of garbage, each with one gap in a different column from the row
+    // above it, and the goal is to clear them all.
+    if(rules.dig){
+      var digRandom = typeof rules.seed==='number' ? seededRandom(rules.seed ^ 0x2545f491) : Math.random, hole=-1;
+      for(var d=0;d<rules.dig;d++){
+        var h = hole<0 ? Math.floor(digRandom()*COLS) : Math.floor(digRandom()*(COLS-1));
+        if(hole>=0 && h>=hole) h++;
+        hole=h;
+        for(var hx=0;hx<COLS;hx++) g.board[ROWS-1-d][hx] = hx===h ? 0 : 2;
+      }
+    }
+    function garbageRows(){
+      var n=0;
+      for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++) if(g.board[y][x]===2){ n++; break; }
+      return n;
+    }
 
     function emit(e){ g.events.push(e); }
     function note(code){
@@ -258,6 +286,7 @@
       g.state='playing';
       emit({t:'clear', n:cleared, b2b:b2b, combo:g.combo, sent:sent, leveledUp:leveledUp});
       if(rules.goalLines && g.lines>=rules.goalLines){ end('complete'); return; }
+      if(rules.dig){ g.digLeft=garbageRows(); if(!g.digLeft){ end('complete'); return; } }
       if(rules.puzzle && boardEmpty()){ end('solved'); return; }
       spawn();
       g.holdUsed=false;
@@ -359,6 +388,7 @@
   return {
     VERSION:VERSION, COLS:COLS, ROWS:ROWS, TICK_MS:TICK_MS, TICKS_PER_SECOND:TICKS_PER_SECOND,
     SHAPES:SHAPES, KEYS:KEYS, KICKS:KICKS,
-    create:create, replay:replay, dailyRules:dailyRules, puzzleBoard:puzzleBoard, emptyBoard:emptyBoard
+    create:create, replay:replay, dailyRules:dailyRules, modeRules:modeRules, DIG_ROWS:DIG_ROWS,
+    puzzleBoard:puzzleBoard, emptyBoard:emptyBoard
   };
 });

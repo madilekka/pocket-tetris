@@ -19,7 +19,7 @@
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn'), topBtn=$('topBtn');
   var topPanel=$('topPanel'), topText=$('topText'), topList=$('topList'), nameInput=$('nameInput');
-  var topMain=$('topMain'), topAlt=$('topAlt'), topBack=$('topBack');
+  var topMain=$('topMain'), topAlt=$('topAlt'), topWeek=$('topWeek'), topBack=$('topBack'), chBtn=$('chBtn');
   var muteBtn=$('muteBtn'), langBtn=$('langBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
@@ -32,8 +32,8 @@
   // (or another language of the region) and in English elsewhere; the RU/EN button switches it.
   var TEXT={
     ru:{
-      'mode.marathon':'МАРАФОН', 'mode.sprint':'40 ЛИНИЙ', 'mode.ultra':'НА ВРЕМЯ', 'mode.daily':'ИСПЫТАНИЕ ДНЯ', 'mode.puzzle':'ГОЛОВОЛОМКИ', 'mode.battle':'БИТВА',
-      'hint.marathon':'ИГРАЙ, ПОКА НЕ ЗАПОЛНИТСЯ ПОЛЕ', 'hint.sprint':'СОБЕРИ 40 ЛИНИЙ КАК МОЖНО БЫСТРЕЕ', 'hint.ultra':'НАБЕРИ БОЛЬШЕ ОЧКОВ ЗА ВРЕМЯ',
+      'mode.marathon':'МАРАФОН', 'mode.sprint':'40 ЛИНИЙ', 'mode.dig':'РАСКОПКИ', 'mode.ultra':'НА ВРЕМЯ', 'mode.daily':'ИСПЫТАНИЕ ДНЯ', 'mode.puzzle':'ГОЛОВОЛОМКИ', 'mode.battle':'БИТВА',
+      'hint.marathon':'ИГРАЙ, ПОКА НЕ ЗАПОЛНИТСЯ ПОЛЕ', 'hint.dig':'ПРОКОПАЙСЯ ДО ДНА КАК МОЖНО БЫСТРЕЕ', 'hint.sprint':'СОБЕРИ 40 ЛИНИЙ КАК МОЖНО БЫСТРЕЕ', 'hint.ultra':'НАБЕРИ БОЛЬШЕ ОЧКОВ ЗА ВРЕМЯ',
       'hint.daily':'{0} - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ', 'hint.puzzle':'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ', 'hint.battle':'ОНЛАЙН ПРОТИВ ДРУГА',
       'skin.classic':'КЛАССИКА', 'skin.purple':'ФИОЛЕТОВЫЙ', 'skin.teal':'БИРЮЗОВЫЙ', 'skin.yellow':'ЖЁЛТЫЙ', 'skin.red':'КРАСНЫЙ', 'skin.black':'ЧЁРНЫЙ', 'skin.gold':'ЗОЛОТОЙ',
       'how.purple':'ОТКРОЕТСЯ ЗА ПЕРВЫЙ ТЕТРИС (4 ЛИНИИ РАЗОМ)', 'how.teal':'ОТКРОЕТСЯ ЗА СЕРИЮ X3', 'how.yellow':'ОТКРОЕТСЯ, КОГДА ПРОЙДЁШЬ 40 ЛИНИЙ',
@@ -82,6 +82,17 @@
       tBadName:'ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ', tBadCode:'В КОДЕ 16 ЗНАКОВ:\nЦИФРЫ И БУКВЫ A-F', tNoCode:'ТАКОЙ КОД НЕ НАЙДЕН',
       ariaCode:'Код восстановления', ariaName:'Имя в таблице рекордов',
       hintOn:'ПОДСКАЗКА:\nСТАВЬ ФИГУРУ\nНА ПОДСВЕТКУ', hintHold:'НАЖМИ «ЗАПАС»', hintOff:'ФИГУРА НЕ ТАМ -\nПОДСКАЗКА ВЫКЛЮЧЕНА', hintSpent:'ПОДСКАЗКА ДЛЯ ЭТОГО\nУРОВНЯ УЖЕ БЫЛА', ariaHint:'Подсказка: показать, куда ставить фигуры',
+      cardDig:'РАСКОПКИ', cardRows:'РЯДЫ', digLeftSub:'РЯДОВ МУСОРА ОСТАЛОСЬ: {0}', sprintSub:'ЛИНИЙ: {0} ИЗ 40',
+      shareDigDone:'Pocket Tetris: раскопал {0} рядов мусора за {1}! Сможешь быстрее?', shareDig:'Pocket Tetris: раскопал {0} из {1} рядов мусора. Попробуй до самого дна!',
+      streak:'СЕРИЯ: {0} {1} ПОДРЯД', weekTitle:'НЕДЕЛЯ {0}', byWeek:'ЗА НЕДЕЛЮ', byDay:'ЗА ДЕНЬ',
+      tNobodyWeek:'НА ЭТОЙ НЕДЕЛЕ ЕЩЁ\nНИКТО НЕ ИГРАЛ. БУДЬ ПЕРВЫМ!', tPlayersWeek:'ИГРОКОВ ЗА НЕДЕЛЮ: {0}\nЛУЧШИЕ ОЧКИ КАЖДОГО ДНЯ\nСКЛАДЫВАЮТСЯ',
+      nameTitle:'ИМЯ ИГРОКА', toMenu:'В МЕНЮ', restored:'ПРОГРЕСС ВОССТАНОВЛЕН',
+      chBtn:'ВЫЗОВ ДРУГУ', chTitle:'ВЫЗОВ', chMaking:'ГОТОВИМ ВЫЗОВ...',
+      chReady:'ВЫЗОВ ГОТОВ!\nДРУГ СЫГРАЕТ ТЕМИ ЖЕ ФИГУРАМИ.\nОТКРОЙ ЭТУ ССЫЛКУ ПОЗЖЕ,\nЧТОБЫ УВИДЕТЬ ЕГО РЕЗУЛЬТАТ', chSend:'ОТПРАВИТЬ',
+      chFrom:'{0} ВЫЗЫВАЕТ ТЕБЯ!\n{1}\nФИГУРЫ ТЕ ЖЕ, ЧТО У НЕГО', chWin:'ТЫ ВПЕРЕДИ ВСЕХ!', chAlone:'ПОКА СЫГРАЛ ТОЛЬКО ТЫ', chPlace:'ТЫ НА {0}-М МЕСТЕ ИЗ {1}',
+      chPlay:'ИГРАТЬ', chAgain:'ЕЩЁ РАЗ', chSendMore:'ПОЗВАТЬ ЕЩЁ', chOld:'ЭТОТ ВЫЗОВ ИЗ СТАРОЙ\nВЕРСИИ ИГРЫ, СЫГРАТЬ\nЕГО УЖЕ НЕЛЬЗЯ',
+      chMissing:'ВЫЗОВ НЕ НАЙДЕН.\nССЫЛКИ ЖИВУТ ДВЕ НЕДЕЛИ', chMarathon:'МАРАФОН С УРОВНЯ {0}', chUltra:'НА ВРЕМЯ, {0} МИНУТ',
+      chShareText:'Pocket Tetris: вызываю тебя! {0}, мой результат — {1}. Фигуры будут те же — сможешь лучше?',
       langName:'РУССКИЙ', install:'Установить как приложение',
       iosHint:'Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b>',
       ariaSound:'Звук', ariaLang:'Язык: русский. Нажми, чтобы переключить на английский', ariaPrevMode:'Предыдущий режим', ariaNextMode:'Следующий режим',
@@ -90,8 +101,8 @@
       ariaHold:'Отложить фигуру в запас'
     },
     en:{
-      'mode.marathon':'MARATHON', 'mode.sprint':'40 LINES', 'mode.ultra':'TIME ATTACK', 'mode.daily':'DAILY', 'mode.puzzle':'PUZZLES', 'mode.battle':'BATTLE',
-      'hint.marathon':'PLAY UNTIL THE BOARD FILLS UP', 'hint.sprint':'CLEAR 40 LINES AS FAST AS YOU CAN', 'hint.ultra':'SCORE AS MUCH AS YOU CAN IN TIME',
+      'mode.marathon':'MARATHON', 'mode.sprint':'40 LINES', 'mode.dig':'DIG', 'mode.ultra':'TIME ATTACK', 'mode.daily':'DAILY', 'mode.puzzle':'PUZZLES', 'mode.battle':'BATTLE',
+      'hint.marathon':'PLAY UNTIL THE BOARD FILLS UP', 'hint.dig':'DIG DOWN TO THE FLOOR AS FAST AS YOU CAN', 'hint.sprint':'CLEAR 40 LINES AS FAST AS YOU CAN', 'hint.ultra':'SCORE AS MUCH AS YOU CAN IN TIME',
       'hint.daily':'{0} - SAME PIECES FOR EVERYONE', 'hint.puzzle':'CLEAR THE BOARD, PIECES DON\'T FALL', 'hint.battle':'ONLINE AGAINST A FRIEND',
       'skin.classic':'CLASSIC', 'skin.purple':'PURPLE', 'skin.teal':'TEAL', 'skin.yellow':'YELLOW', 'skin.red':'RED', 'skin.black':'BLACK', 'skin.gold':'GOLD',
       'how.purple':'UNLOCKS WITH YOUR FIRST TETRIS (4 LINES)', 'how.teal':'UNLOCKS WITH A COMBO X3', 'how.yellow':'UNLOCKS WHEN YOU FINISH 40 LINES',
@@ -140,6 +151,17 @@
       tBadName:'ONLY LETTERS AND DIGITS,\nUP TO 10', tBadCode:'THE CODE HAS 16 CHARACTERS:\nDIGITS AND LETTERS A-F', tNoCode:'NO SUCH CODE',
       ariaCode:'Recovery code', ariaName:'Name for the daily top',
       hintOn:'HINT: PUT THE\nPIECE ON THE\nMARKED CELLS', hintHold:'PRESS HOLD', hintOff:'OFF THE PLAN -\nTHE HINT IS OFF', hintSpent:'NO HINT LEFT\nFOR THIS LEVEL', ariaHint:'Hint: show where the pieces go',
+      cardDig:'DIG', cardRows:'ROWS', digLeftSub:'GARBAGE ROWS LEFT: {0}', sprintSub:'LINES: {0} OF 40',
+      shareDigDone:'Pocket Tetris: dug through {0} rows of garbage in {1}! Can you be faster?', shareDig:'Pocket Tetris: dug {0} of {1} rows of garbage. Try to reach the floor!',
+      streak:'STREAK: {0} {1} IN A ROW', weekTitle:'WEEK {0}', byWeek:'THIS WEEK', byDay:'TODAY',
+      tNobodyWeek:'NOBODY HAS PLAYED THIS\nWEEK YET. BE THE FIRST!', tPlayersWeek:'PLAYERS THIS WEEK: {0}\nEVERY DAY\'S BEST SCORE\nADDS UP',
+      nameTitle:'PLAYER NAME', toMenu:'TO THE MENU', restored:'PROGRESS RESTORED',
+      chBtn:'CHALLENGE A FRIEND', chTitle:'CHALLENGE', chMaking:'PREPARING THE CHALLENGE...',
+      chReady:'THE CHALLENGE IS READY!\nYOUR FRIEND GETS THE SAME\nPIECES. OPEN THIS LINK LATER\nTO SEE HOW THEY DID', chSend:'SEND',
+      chFrom:'{0} CHALLENGES YOU!\n{1}\nTHE SAME PIECES AS THEIRS', chWin:'YOU ARE AHEAD OF EVERYONE!', chAlone:'SO FAR ONLY YOU PLAYED', chPlace:'YOU ARE {0} OF {1}',
+      chPlay:'PLAY', chAgain:'AGAIN', chSendMore:'INVITE MORE', chOld:'THIS CHALLENGE IS FROM AN\nOLDER VERSION OF THE GAME\nAND CAN\'T BE PLAYED',
+      chMissing:'CHALLENGE NOT FOUND.\nLINKS LAST TWO WEEKS', chMarathon:'MARATHON FROM LEVEL {0}', chUltra:'TIME ATTACK, {0} MINUTES',
+      chShareText:'Pocket Tetris: I challenge you! {0}, my result is {1}. You get the same pieces — can you beat it?',
       langName:'ENGLISH', install:'Install as an app',
       iosHint:'To install on iPhone: tap <b>•••</b> or the Share icon (a square with an up arrow) &rarr; <b>Add to Home Screen</b>',
       ariaSound:'Sound', ariaLang:'Language: English. Tap to switch to Russian', ariaPrevMode:'Previous mode', ariaNextMode:'Next mode',
@@ -186,7 +208,7 @@
 
   /* ---------------- modes ---------------- */
   var MODES=[
-    {id:'marathon'}, {id:'sprint'}, {id:'ultra'}, {id:'daily'}, {id:'puzzle'}, {id:'battle'}
+    {id:'marathon'}, {id:'sprint'}, {id:'dig'}, {id:'ultra'}, {id:'daily'}, {id:'puzzle'}, {id:'battle'}
   ];
 
   /* ---------------- puzzles ---------------- */
@@ -203,7 +225,9 @@
   var DURATIONS=[5,7,10];
   // Only MARATHON lets the player pick a level; the other modes have fixed rules so friends' records are comparable.
   // Timed games start at level 0 and level up every N lines, N = the game's minutes, so difficulty peaks near the end.
-  function baseLevel(){ return mode==='marathon' ? startLevel : (mode==='sprint' ? SPRINT_LEVEL : 0); }
+  function baseLevel(){ return mode==='marathon' ? startLevel : (mode==='sprint' || mode==='dig' ? SPRINT_LEVEL : 0); }
+  // 40 LINES and DIG are races: the time counts up and the record is the fastest finish.
+  function raceMode(){ return mode==='sprint' || mode==='dig'; }
   function onTheClock(){ return mode==='ultra' || mode==='daily'; }
   function minutes(){ return mode==='daily' ? DAILY_MINUTES : DURATIONS[durIdx]; }
   function timeLimit(){ return minutes()*60000; }
@@ -226,6 +250,7 @@
   function useHint(){
     if(!hintAvailable()) return;
     usedHints.push(puzzleIdx);
+    saveProgressSoon();
     writeStore('pocket-tetris-hints', JSON.stringify(usedHints));
     startGame(true);
   }
@@ -302,15 +327,16 @@
     if(isUnlocked(id)) return;
     unlockedSkins.push(id);
     writeStore('pocket-tetris-colors', JSON.stringify(unlockedSkins));
+    saveProgressSoon();
     // Shown after the line-clear toast so the two messages don't overwrite each other.
     setTimeout(function(){ showToast(t('newColor', t('skin.'+id)),1800); sfxLevel(); },900);
   }
 
   var modeIdx=0, mode='marathon', startLevel=0, durIdx=0, menuRow=0, menuLockUntil=0;
-  var best={marathon:0, sprint:0, ta5:0, ta7:0, ta10:0, daily:0};
+  var best={marathon:0, sprint:0, dig:0, ta5:0, ta7:0, ta10:0, daily:0};
   // Records start over whenever a rule change makes old scores incomparable: rec2 began with the modern speed curve.
   var BEST_KEYS={marathon:'pocket-tetris-rec2-marathon', sprint:'pocket-tetris-rec2-sprint',
-    ta5:'pocket-tetris-rec2-ta5', ta7:'pocket-tetris-rec2-ta7', ta10:'pocket-tetris-rec2-ta10'};
+    ta5:'pocket-tetris-rec2-ta5', ta7:'pocket-tetris-rec2-ta7', ta10:'pocket-tetris-rec2-ta10', dig:'pocket-tetris-rec2-dig'};
   var OLD_RECORD_KEYS=['pocket-tetris-high','pocket-tetris-best-sprint','pocket-tetris-best-sprint-v2',
     'pocket-tetris-best-ta5','pocket-tetris-best-ta7','pocket-tetris-best-ta10'];
 
@@ -344,7 +370,7 @@
   var board=[], piece=null, pieceKey=null, nextKey=null, heldKey=null, px=0, py=0;
   var score=0, lines=0, level=0, lastTs=null, elapsed=0;
   var gameState='ready', holdUsed=false;
-  var flashRows=null, pieceCounts={}, scale=1, pieceSerial=0, puzzleQueue=[];
+  var flashRows=null, pieceCounts={}, scale=1, pieceSerial=0, puzzleQueue=[], digLeft=0, playedOpt=0, playedSeed=0;
 
   function resetBoard(){ board=Engine.emptyBoard(); }
 
@@ -352,14 +378,18 @@
     if(mode==='puzzle') return {puzzle:PUZZLES[puzzleIdx]};
     if(mode==='battle') return {battle:true, seed:battleSeed};
     if(mode==='daily'){ var r=Engine.dailyRules(dailyDay); r.record=true; return r; }
-    return {startLevel:baseLevel(), linesPerLevel:linesPerLevel(), goalLines: mode==='sprint' ? SPRINT_LINES : 0,
-      timeLimitTicks: onTheClock() ? minutes()*60*Engine.TICKS_PER_SECOND : 0};
+    // Every other game has its own seed and is recorded, so it can be sent as a challenge; a challenge deals the friend's seed.
+    playedOpt = mode==='marathon' ? startLevel : mode==='ultra' ? DURATIONS[durIdx] : 0;
+    playedSeed = challenge && challenge.mode===mode ? challenge.seed : randomSeed();
+    var r=Engine.modeRules(mode, playedOpt, playedSeed);
+    r.record=true;
+    return r;
   }
   function pull(){
     board=game.board; piece=game.piece; pieceKey=game.key; nextKey=game.next; heldKey=game.held; holdUsed=game.holdUsed;
     px=game.px; py=game.py; score=game.score; lines=game.lines; level=game.level; elapsed=game.elapsedMs();
     flashRows=game.clearRows; pieceCounts=game.pieceCounts; pieceSerial=game.serial; puzzleQueue=game.queue;
-    battle.pending=game.pending;
+    battle.pending=game.pending; digLeft=game.digLeft;
   }
   // After the engine has moved on: mirror it, react to what happened (sounds, messages, the end), refresh the HUD.
   function afterEngine(){
@@ -398,7 +428,7 @@
   }
   // Redraws the HUD and the HOLD/NEXT boxes only when what they show has changed.
   function syncView(){
-    var hud=[score,lines,level,battle.pending,puzzleQueue.length,nextKey,heldKey].join('|');
+    var hud=[score,lines,level,battle.pending,puzzleQueue.length,nextKey,heldKey,digLeft].join('|');
     if(hud!==shown.hud){ shown.hud=hud; updateHud(); }
     var boxes=(nextKey||'-')+(heldKey||'-')+(holdUsed?1:0);
     if(boxes!==shown.boxes){ shown.boxes=boxes; drawNext(); drawHold(); }
@@ -418,12 +448,12 @@
     return txt;
   }
   function timeText(){
-    if(mode==='sprint') return fmtTime(elapsed,true);
+    if(raceMode()) return fmtTime(elapsed,true);
     return fmtTime(Math.ceil(Math.max(0,timeLimit()-elapsed)/1000)*1000,false);
   }
   function inGame(){ return gameState==='playing' || gameState==='paused' || gameState==='clearing'; }
   function bestText(){
-    if(mode==='sprint') return best.sprint ? fmtTime(best.sprint,true) : '--';
+    if(raceMode()) return best[mode] ? fmtTime(best[mode],true) : '--';
     var b=best[recordId()];
     return inGame() ? Math.max(b,score) : b;
   }
@@ -467,7 +497,11 @@
     scoreLabel.textContent=t('lblScore');
     timeLabel.textContent=t('lblTime');
     var toGo, filled;
-    if(mode==='sprint'){
+    if(mode==='dig'){
+      // The bar fills as the garbage goes; the number is how many garbage rows are left.
+      toGo=digLeft;
+      filled=Math.round((Engine.DIG_ROWS-digLeft)*10/Engine.DIG_ROWS);
+    } else if(mode==='sprint'){
       toGo=Math.max(0,SPRINT_LINES-lines);
       filled=Math.min(10,Math.floor(lines/(SPRINT_LINES/10)));
     } else {
@@ -740,12 +774,14 @@
     var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
     var canShare = onMain && gameState==='gameover' && !!lastResult && !failedPuzzle;
     var canTop = onMain && MODES[modeIdx].id==='daily';
+    var canCh = onMain && gameState==='gameover' && canChallenge(lastResult);
     // After a failed puzzle, the level's one hint can be spent on a guided retry.
     var canHint = onMain && gameState==='gameover' && failedPuzzle && hintAvailable();
     shareBtn.hidden=!canShare;
     topBtn.hidden=!canTop;
     hintRetryBtn.hidden=!canHint;
-    shareRow.hidden=!(canShare || canTop || canHint);
+    chBtn.hidden=!canCh;
+    shareRow.hidden=!(canShare || canTop || canHint || canCh);
   }
   function hideOverlay(){
     overlay.hidden=true;
@@ -815,7 +851,7 @@
     if(kind==='complete'){
       title=t('complete');
       sub=t('subTime', fmtTime(elapsed,true));
-      if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
+      if(!best[mode] || elapsed<best[mode]){ best[mode]=Math.round(elapsed); record=true; }
       sfxLevel();
     } else if(mode==='puzzle'){
       if(kind==='solved'){
@@ -841,19 +877,24 @@
       if(score>best[rid]){ best[rid]=score; record=true; }
       // The best game of the day (or the first one) is kept as a recording for the daily top.
       if(mode==='daily' && (record || !readStore(dailyReplayKey()))) writeStore(dailyReplayKey(), game.recording());
+      if(mode==='daily'){ noteDailyDone(dailyDay); if(streakLine()) sub+='\n'+streakLine(); }
       if(kind==='timeup') sfxLevel(); else sfxGameOver();
     } else {
       if(mode==='marathon' && score>best.marathon){ best.marathon=score; record=true; }
+      // A race that ended before the finish says how far it got.
+      if(mode==='dig') sub=t('digLeftSub', digLeft);
+      if(mode==='sprint') sub=t('sprintSub', lines);
       sfxGameOver();
     }
     lastResult={mode:mode, kind:kind, score:score, lines:lines, level:level, elapsed:elapsed, minutes:minutes(), day:dayLabel(),
       puzzle:puzzleLabel, pieces:PUZZLES.length ? PUZZLES[puzzleAt].pieces : '', record:record,
+      ticks:game.tick, dug:Engine.DIG_ROWS-digLeft, opt:playedOpt, seed:playedSeed, rec: CHALLENGE_MODES[mode] ? game.recording() : '',
       // A solved puzzle ends on an empty board, so the picture shows the puzzle it started from.
       board: mode==='puzzle' ? puzzleLayout(puzzleAt) : board.map(function(row){ return row.slice(); })};
     renderShareCard(lastResult);
     // Before renderMenu: it may roll the daily over to a new day if the game ended after midnight.
     if(mode==='daily') sendDailyResult(lastResult, dailyDay);
-    if(kind==='complete') unlockSkin('yellow');
+    if(kind==='complete' && mode==='sprint') unlockSkin('yellow');
     if(kind==='timeup' && mode==='daily') unlockSkin('red');
     if(mode!=='puzzle' && score>=50000) unlockSkin('gold');
     saveBest();
@@ -863,6 +904,9 @@
     powerLed.style.opacity='.35';
     var recordText = mode==='daily' ? t('bestToday') : t('newRecord');
     showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, '', 'main');
+    saveProgressSoon();
+    // A challenge game goes straight to the challenge's table.
+    if(challenge && challenge.mode===mode) sendChallengeResult(lastResult);
   }
 
   /* ---------------- share result ---------------- */
@@ -870,6 +914,7 @@
   function fmtScore(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
   function shareText(r){
     if(r.mode==='sprint') return r.kind==='complete' ? t('shareSprintDone', fmtTime(r.elapsed,true)) : t('shareSprint', r.lines);
+    if(r.mode==='dig') return r.kind==='complete' ? t('shareDigDone', Engine.DIG_ROWS, fmtTime(r.elapsed,true)) : t('shareDig', r.dug, Engine.DIG_ROWS);
     if(r.mode==='puzzle') return t('sharePuzzle', r.puzzle);
     if(r.mode==='daily') return t('shareDaily', r.day, fmtScore(r.score), r.rank ? t('shareDailyRank', r.rank, r.players) : '');
     if(r.mode==='ultra') return t('shareUltra', r.minutes, fmtScore(r.score));
@@ -902,6 +947,9 @@
     if(r.mode==='sprint'){
       head=t('cardSprint');
       rows = r.kind==='complete' ? [[t('cardTime'),fmtTime(r.elapsed,true)],[t('cardLines'),'40']] : [[t('cardLines'),r.lines+'/40'],[t('cardTime'),fmtTime(r.elapsed,true)]];
+    } else if(r.mode==='dig'){
+      head=t('cardDig');
+      rows = r.kind==='complete' ? [[t('cardTime'),fmtTime(r.elapsed,true)],[t('cardRows'),String(Engine.DIG_ROWS)]] : [[t('cardRows'),r.dug+'/'+Engine.DIG_ROWS],[t('cardTime'),fmtTime(r.elapsed,true)]];
     } else if(r.mode==='puzzle'){
       head=t('cardPuzzle', r.puzzle);
       rows=[[t('cardResult'),t('cardSolved')],[t('cardPieces'),r.pieces]];
@@ -982,11 +1030,12 @@
   }
 
   /* ---------------- daily top ---------------- */
-  // Everyone plays the same DAILY pieces, so each player's best score of the day goes on a shared list.
-  // The game sends a recording of the best game's key presses, and the server replays it to count the score itself.
-  // A player is a random id kept on this device. It doubles as the recovery code that brings the name back on
-  // another phone, and the name belongs to it, so nobody else can take the name. Only a hash of the id
-  // (playerPub) ever goes into a URL or onto the list.
+  // Everyone plays the same DAILY pieces, so each player's best score of the day goes on a shared list, and the
+  // week's list adds up every day's best. The game sends a recording of the best game's key presses, and the
+  // server replays it to count the score itself.
+  // A player is a random id kept on this device. It doubles as the recovery code that brings the name (and the
+  // progress) back on another phone, and the name belongs to it, so nobody else can take the name. Only a hash
+  // of the id (playerPub) ever goes into a URL or onto a list.
   var NAME_RE=/^[A-Z0-9А-ЯЁ][A-Z0-9А-ЯЁ _.-]{0,9}$/, CODE_RE=/^[0-9a-f]{16}$/;
   function randomHex(bytes){
     return Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(bytes)), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
@@ -1003,20 +1052,55 @@
     }, function(){ return null; });
   }
   function refreshPub(){ return publicId(playerId).then(function(p){ playerPub=p; return p; }); }
+  function withPub(){ return playerPub ? Promise.resolve(playerPub) : refreshPub(); }
   refreshPub();
   function fmtCode(c){ return c.toUpperCase().replace(/(.{4})(?=.)/g,'$1 '); }
 
-  // null while closed; otherwise 'loading', 'list', 'profile', 'name', 'code' or 'error'.
-  var topView=null, topData=null, topSerial=0, topNote='', topRetry=null;
+  // Days as YYYYMMDD numbers.
+  function shiftDay(day,n){
+    var d=new Date(Date.UTC(Math.floor(day/10000), Math.floor(day/100)%100-1, day%100));
+    d.setUTCDate(d.getUTCDate()+n);
+    return d.getUTCFullYear()*10000+(d.getUTCMonth()+1)*100+d.getUTCDate();
+  }
+  function weekStart(day){ return shiftDay(day, -((new Date(Date.UTC(Math.floor(day/10000), Math.floor(day/100)%100-1, day%100)).getUTCDay()+6)%7)); }
+  function shortDay(day){ var d=day%100, m=Math.floor(day/100)%100; return (d<10?'0':'')+d+'.'+(m<10?'0':'')+m; }
+  function weekLabel(){ var w=weekStart(dailyDay); return shortDay(w)+'-'+shortDay(shiftDay(w,6)); }
+
+  // How many days in a row the player finished the DAILY. It lives on the phone and travels with the progress.
+  var streak=null;
+  try{
+    var savedStreak=JSON.parse(readStore('pocket-tetris-streak')||'null');
+    if(savedStreak && savedStreak.last===(savedStreak.last|0) && savedStreak.n===(savedStreak.n|0)) streak={last:savedStreak.last, n:savedStreak.n};
+  }catch(e){}
+  function noteDailyDone(day){
+    if(streak && streak.last===day) return;
+    streak={last:day, n: streak && streak.last===shiftDay(day,-1) ? streak.n+1 : 1};
+    writeStore('pocket-tetris-streak', JSON.stringify(streak));
+  }
+  function dayWord(n){
+    if(lang!=='ru') return n===1 ? 'DAY' : 'DAYS';
+    var a=n%10, b=n%100;
+    return a===1 && b!==11 ? 'ДЕНЬ' : a>=2 && a<=4 && (b<12 || b>14) ? 'ДНЯ' : 'ДНЕЙ';
+  }
+  // Shown from two days on, while the streak is alive (played today or yesterday).
+  function streakLine(){
+    var today=dayKey(), n = streak && (streak.last===today || streak.last===shiftDay(today,-1)) ? streak.n : 0;
+    return n>=2 ? t('streak', n, dayWord(n)) : '';
+  }
+
+  // The panel over the screen, one view at a time: null while closed; 'loading', 'error', 'list' (today),
+  // 'week', 'profile', 'name', 'code'; and for challenges 'chMaking', 'chReady', 'chInvite', 'chResult'.
+  // topBase is the list BACK returns to; nameThen runs once a name is picked (a challenge needs one).
+  var topView=null, topData=null, topSerial=0, topNote='', topRetry=null, topError='', topTitle='', topBase=null, nameThen=null;
   function topOpen(){ return topView!==null; }
+  function post(path,body){ return api(path, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(body)}); }
 
   // Sends today's best recorded game; resolves with {rank, players, score}, or null when there's nothing to send.
   // Fails with 409 when the name belongs to someone else and 426 when this copy of the game is out of date.
   function submitDaily(day){
     var rec=readStore(dailyReplayKey());
     if(!playerName || !rec) return Promise.resolve(null);
-    return api('/daily', {method:'POST', headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({pid:playerId, name:playerName, day:day, v:Engine.VERSION, rec:rec})});
+    return post('/daily', {pid:playerId, name:playerName, day:day, v:Engine.VERSION, rec:rec});
   }
   // After a DAILY game: send today's best and show the player's place under the result.
   function sendDailyResult(r,day){
@@ -1030,64 +1114,76 @@
     }, function(){});
   }
 
-  function topRow(rank,name,score,me){
+  function topRow(rank,name,value,me){
     var el=document.createElement('div');
-    el.textContent=(rank ? String(rank) : '').padStart(3,' ')+' '+name.padEnd(10,' ')+' '+(score==='' ? '' : fmtScore(score)).padStart(10,' ');
+    el.textContent=(rank ? String(rank) : '').padStart(3,' ')+' '+name.padEnd(10,' ')+' '+value.padStart(10,' ');
     if(me) el.className='me';
     topList.appendChild(el);
   }
+  function listBoard(rows, me, value){
+    rows.forEach(function(r,i){ topRow(r.rank || i+1, r.name, value(r), r.me); });
+    if(me && me.rank>rows.length){ topRow(0,'   ...','',false); topRow(me.rank, me.name || playerName, value(me), true); }
+  }
   function renderTop(){
-    overlayTitle.textContent=t('topTitle', dayLabel());
+    var v=topView, d=topData;
+    overlayTitle.textContent = v==='list' ? t('topTitle', dayLabel()) : v==='week' ? t('weekTitle', weekLabel())
+      : (v==='name' || v==='code' || v==='profile') ? t('nameTitle') : v.indexOf('ch')===0 ? t('chTitle') : topTitle;
     overlaySub.textContent=''; overlayStats.textContent='';
     menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true; battlePanel.hidden=true;
     topPanel.hidden=false;
     overlay.hidden=false;
     topList.textContent='';
-    var typing = topView==='name' || topView==='code';
+    var typing = v==='name' || v==='code';
     nameInput.hidden=!typing;
-    nameInput.classList.toggle('codein', topView==='code');
-    nameInput.maxLength = topView==='code' ? 19 : 10;
-    nameInput.setAttribute('aria-label', topView==='code' ? t('ariaCode') : t('ariaName'));
-    topMain.hidden = topView==='loading';
-    topAlt.hidden = !(topView==='list' || topView==='name');
-    topBack.textContent = topView==='loading' ? t('cancel') : t('back');
-    var text;
-    if(topView==='loading'){
-      text=t('tLoading');
-    } else if(topView==='error'){
-      text=t('tNoServer');
-      topMain.textContent=t('retry');
-    } else if(topView==='name'){
-      text=t('tAskName');
-      topMain.textContent=t('save');
-      topAlt.textContent=t('haveCode');
-    } else if(topView==='code'){
-      text=t('tAskCode');
-      topMain.textContent=t('restore');
-    } else if(topView==='profile'){
-      text=t('tProfile', playerName, fmtCode(playerId));
-      topMain.textContent=t('changeName');
-    } else {
-      var d=topData;
-      text = !d.players ? t('tNobody') : t('tPlayers', d.players)+(d.me ? '' : '\n'+t('tPlayToJoin'));
-      d.top.forEach(function(e,i){ topRow(i+1, e.name, e.score, e.me); });
-      if(d.me && d.me.rank>d.top.length){ topRow(0,'   ...','',false); topRow(d.me.rank, playerName, d.me.score, true); }
-      topMain.textContent=t('play');
-      topAlt.textContent=t('myName');
+    nameInput.classList.toggle('codein', v==='code');
+    nameInput.maxLength = v==='code' ? 19 : 10;
+    nameInput.setAttribute('aria-label', v==='code' ? t('ariaCode') : t('ariaName'));
+    topMain.hidden = v==='loading' || v==='chMaking' || (v==='error' && !topRetry);
+    topAlt.hidden = !(v==='list' || v==='week' || v==='name' || v==='chResult');
+    topWeek.hidden = !(v==='list' || v==='week');
+    topBack.textContent = v==='loading' || v==='chMaking' ? t('cancel') : v==='chResult' ? t('toMenu') : t('back');
+    var text='';
+    switch(v){
+      case 'loading': text=t('tLoading'); break;
+      case 'error': text=t(topError || 'tNoServer'); topMain.textContent=t('retry'); break;
+      case 'name': text=t('tAskName'); topMain.textContent=t('save'); topAlt.textContent=t('haveCode'); break;
+      case 'code': text=t('tAskCode'); topMain.textContent=t('restore'); break;
+      case 'profile': text=t('tProfile', playerName, fmtCode(playerId)); topMain.textContent=t('changeName'); break;
+      case 'list': case 'week':
+        var week = v==='week';
+        text = !d.players ? t(week ? 'tNobodyWeek' : 'tNobody') : t(week ? 'tPlayersWeek' : 'tPlayers', d.players)+(d.me ? '' : '\n'+t('tPlayToJoin'));
+        if(streakLine()) text=streakLine()+'\n'+text;
+        listBoard(d.top, d.me, function(r){ return fmtScore(r.score); });
+        topMain.textContent=t('play'); topAlt.textContent=t('myName'); topWeek.textContent=t(week ? 'byDay' : 'byWeek');
+        break;
+      case 'chMaking': text=t('chMaking'); break;
+      case 'chReady': text=t('chReady'); topMain.textContent=t('chSend'); break;
+      case 'chInvite': case 'chResult':
+        var old = d.v!==Engine.VERSION;
+        if(v==='chInvite') text = old ? t('chOld') : t('chFrom', d.by, chDesc(d));
+        else text = chDesc(d)+'\n'+(d.players<2 ? t('chAlone') : d.me && d.me.rank===1 ? t('chWin') : t('chPlace', d.me ? d.me.rank : '?', d.players));
+        listBoard(d.top, d.me, function(r){ return chValue(d.mode, r); });
+        if(old) topMain.hidden=true;
+        topMain.textContent = v==='chInvite' ? t('chPlay') : t('chAgain');
+        topAlt.textContent=t('chSendMore');
+        break;
     }
     topText.textContent = topNote ? topNote+'\n\n'+text : text;
   }
   function showTopView(view,note){
     topView=view;
     topNote=note||'';
+    if(view==='list' || view==='week') topBase=view;
     renderTop();
   }
-  function showTopError(retry){
-    topRetry=retry;
+  function showTopError(retry,textKey){
+    topRetry=retry||null;
+    topError=textKey||'';
     showTopView('error');
   }
 
   function openTop(){
+    topTitle=t('topTitle', dayLabel());
     if(!playerName){ askName(); return; }
     loadTop();
   }
@@ -1105,6 +1201,7 @@
   }
   function loadTop(){
     var serial=++topSerial, note='';
+    topTitle=t('topTitle', dayLabel());
     showTopView('loading');
     refreshDaily();
     var day=dailyDay;
@@ -1112,9 +1209,7 @@
     submitDaily(day).catch(function(status){
       if(status===409) note='taken';
       else if(status===426) note=t('tUpdate');
-    }).then(function(){
-      return playerPub || refreshPub();
-    }).then(function(pub){
+    }).then(withPub).then(function(pub){
       return api('/daily/'+day+(pub ? '?me='+pub : ''));
     }).then(function(d){
       if(serial!==topSerial) return;
@@ -1133,24 +1228,44 @@
       showTopError(loadTop);
     });
   }
+  function loadWeek(){
+    var serial=++topSerial;
+    showTopView('loading');
+    refreshDaily();
+    withPub().then(function(pub){
+      return api('/week/'+weekStart(dailyDay)+(pub ? '?me='+pub : ''));
+    }).then(function(d){
+      if(serial!==topSerial) return;
+      topData=d;
+      showTopView('week');
+    }).catch(function(){
+      if(serial!==topSerial) return;
+      showTopError(loadWeek);
+    });
+  }
+  function afterName(){
+    if(nameThen){ var then=nameThen; nameThen=null; then(); }
+    else loadTop();
+  }
   function saveName(){
     var n=nameInput.value.trim().replace(/\s+/g,' ').toUpperCase();
     if(!NAME_RE.test(n)){ topText.textContent=t('tBadName'); return; }
     nameInput.blur();
     var serial=++topSerial;
     showTopView('loading');
-    api('/name', {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({pid:playerId, name:n})}).then(function(){
+    post('/name', {pid:playerId, name:n}).then(function(){
       if(serial!==topSerial) return;
       playerName=n;
       writeStore('pocket-tetris-name', n);
-      loadTop();
+      saveProgressSoon();
+      afterName();
     }, function(status){
       if(serial!==topSerial) return;
       if(status===409) askName(t('tNameTaken', n));
       else showTopError(function(){ askName(); });
     });
   }
-  // A recovery code makes this phone the player from the old one: same id, same name.
+  // A recovery code makes this phone the player from the old one: same id, same name, same progress.
   function restoreCode(){
     var c=nameInput.value.replace(/\s+/g,'').toLowerCase();
     if(!CODE_RE.test(c)){ topText.textContent=t('tBadCode'); return; }
@@ -1165,7 +1280,11 @@
       playerId=c; writeStore('pocket-tetris-player', c);
       playerName=res.name; writeStore('pocket-tetris-name', res.name);
       playerPub=null;
-      refreshPub().then(loadTop);
+      return loadProgress().then(refreshPub).then(function(){
+        if(serial!==topSerial) return;
+        showToast(t('restored'),1600);
+        afterName();
+      });
     }, function(status){
       if(serial!==topSerial) return;
       if(status===404) askCode(t('tNoCode'));
@@ -1175,30 +1294,46 @@
   function closeTop(){
     topSerial++;
     topView=null;
+    topBase=null;
+    nameThen=null;
     nameInput.blur();
     topPanel.hidden=true;
     if(mainOverlay) showOverlay.apply(null, mainOverlay);
   }
   function topGo(){
-    if(topView==='name') saveName();
-    else if(topView==='code') restoreCode();
-    else if(topView==='error'){ if(topRetry) topRetry(); }
-    else if(topView==='profile') askName();
-    else if(topView==='list'){
-      closeTop();
-      modeIdx=MODES.map(function(m){ return m.id; }).indexOf('daily');
-      selectionChanged();
-      startGame();
+    switch(topView){
+      case 'name': saveName(); break;
+      case 'code': restoreCode(); break;
+      case 'error': if(topRetry) topRetry(); break;
+      case 'profile': askName(); break;
+      case 'list': case 'week':
+        challenge=null;
+        closeTop();
+        modeIdx=MODES.map(function(m){ return m.id; }).indexOf('daily');
+        selectionChanged();
+        startGame();
+        break;
+      case 'chReady': sendChallenge(); break;
+      case 'chInvite': playChallenge(); break;
+      case 'chResult': startChallengeGame(); break;
     }
   }
   function topAltAction(){
     if(topView==='name') askCode();
-    else if(topView==='list') showTopView('profile');
+    else if(topView==='list' || topView==='week') showTopView('profile');
+    else if(topView==='chResult'){ setChallengeLink(topData); sendChallenge(); }
   }
-  // BACK steps back inside the top (profile and name to the list, code to name) and otherwise closes it.
+  function topWeekAction(){
+    if(topView==='list') loadWeek();
+    else if(topView==='week') loadTop();
+  }
+  // BACK steps back inside the panel (profile and name to the list they came from, code to name) and otherwise closes it.
   function topBackAction(){
     if(topView==='code'){ askName(); return; }
-    if((topView==='profile' || topView==='name') && playerName && topData){ topSerial++; nameInput.blur(); showTopView('list'); return; }
+    if((topView==='profile' || topView==='name') && playerName && topBase && !nameThen){
+      topSerial++; nameInput.blur(); showTopView(topBase); return;
+    }
+    if(topView==='chResult') challenge=null;
     closeTop();
   }
   function topInput(cmd){
@@ -1208,6 +1343,7 @@
   topBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) openTop(); });
   topMain.addEventListener('click', topGo);
   topAlt.addEventListener('click', topAltAction);
+  topWeek.addEventListener('click', topWeekAction);
   topBack.addEventListener('click', topBackAction);
   nameInput.addEventListener('input', function(){
     var v = topView==='code'
@@ -1215,6 +1351,137 @@
       : nameInput.value.toUpperCase().replace(/[^A-Z0-9А-ЯЁ _.-]/g,'').slice(0,10);
     if(v!==nameInput.value) nameInput.value=v;
   });
+
+  /* ---------------- challenges ---------------- */
+  // A finished MARATHON, 40 LINES, TIME ATTACK or DIG game can be sent to friends as a challenge: whoever opens
+  // the link plays the very same pieces (the game's seed) under the same rules, and the server replays every
+  // result, so the table under a challenge is honest. challenge is the one being played, if any.
+  var CHALLENGE_MODES={marathon:true, sprint:true, ultra:true, dig:true};
+  var challenge=null, chLink='', chText='';
+  function canChallenge(r){ return !!(r && CHALLENGE_MODES[r.mode] && r.rec); }
+  function randomSeed(){ return crypto.getRandomValues(new Uint32Array(1))[0]; }
+  function chDesc(d){ return d.mode==='marathon' ? t('chMarathon', d.opt) : d.mode==='ultra' ? t('chUltra', d.opt) : t('mode.'+d.mode); }
+  // A result as the table shows it: points, or for 40 LINES and DIG the time (or how far an unfinished run got).
+  function chValue(mode,r){
+    if(mode==='sprint' || mode==='dig') return r.done ? fmtTime(r.ticks*Engine.TICK_MS,true) : mode==='dig' ? r.dug+'/'+Engine.DIG_ROWS : r.lines+'/40';
+    return fmtScore(r.score);
+  }
+  function setChallengeLink(d){
+    chLink=location.origin+'/?c='+d.id;
+    var mine=d.me || d.top[0];
+    chText=t('chShareText', chDesc(d), chValue(d.mode, mine));
+  }
+  function withName(then){
+    if(playerName){ then(); return; }
+    nameThen=then;
+    askName();
+  }
+  function createChallenge(){
+    var r=lastResult;
+    if(!canChallenge(r)) return;
+    withName(function(){
+      var serial=++topSerial;
+      showTopView('chMaking');
+      post('/challenge', {pid:playerId, name:playerName, mode:r.mode, opt:r.opt, seed:r.seed, v:Engine.VERSION, rec:r.rec}).then(function(res){
+        if(serial!==topSerial) return;
+        setChallengeLink({id:res.id, mode:r.mode, opt:r.opt, top:[{score:r.score, lines:r.lines, ticks:r.ticks, dug:r.dug, done:r.kind==='complete'}]});
+        showTopView('chReady');
+      }, function(){
+        if(serial!==topSerial) return;
+        showTopError(createChallenge);
+      });
+    });
+  }
+  function sendChallenge(){
+    if(navigator.share) navigator.share({title:'Pocket Tetris', text:chText, url:chLink}).catch(function(){});
+    else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(chText+' '+chLink).then(function(){ showToast(t('linkCopied'),1200); }, function(){});
+  }
+  function openChallenge(id){
+    var serial=++topSerial;
+    topTitle=t('chTitle');
+    showTopView('loading');
+    withPub().then(function(pub){
+      return api('/challenge/'+id+(pub ? '?me='+pub : ''));
+    }).then(function(d){
+      if(serial!==topSerial) return;
+      topData=d;
+      showTopView('chInvite');
+    }, function(status){
+      if(serial!==topSerial) return;
+      if(status===404) showTopError(null,'chMissing');
+      else showTopError(function(){ openChallenge(id); });
+    });
+  }
+  function playChallenge(){
+    var d=topData;
+    withName(function(){
+      challenge={id:d.id, mode:d.mode, opt:d.opt, seed:d.seed};
+      startChallengeGame();
+    });
+  }
+  // Plays the challenge: its mode and options become the menu's, and startGame deals its seed (rulesFor).
+  function startChallengeGame(){
+    modeIdx=MODES.map(function(m){ return m.id; }).indexOf(challenge.mode);
+    if(challenge.mode==='marathon') startLevel=challenge.opt;
+    if(challenge.mode==='ultra') durIdx=Math.max(0, DURATIONS.indexOf(challenge.opt));
+    topSerial++; topView=null; topBase=null; nameInput.blur(); topPanel.hidden=true;
+    selectionChanged();
+    renderMenu();
+    startGame();
+  }
+  function sendChallengeResult(r){
+    var serial=++topSerial, c=challenge;
+    topTitle=t('chTitle');
+    showTopView('loading');
+    post('/challenge/'+c.id+'/result', {pid:playerId, name:playerName, v:Engine.VERSION, rec:r.rec}).then(function(d){
+      if(serial!==topSerial) return;
+      topData=d;
+      showTopView('chResult');
+    }, function(){
+      if(serial!==topSerial) return;
+      showTopError(function(){ sendChallengeResult(r); });
+    });
+  }
+  chBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) createChallenge(); });
+
+  /* ---------------- progress on the server ---------------- */
+  // Colors, solved puzzles, spent hints, records and the daily streak are kept on the server under the player's
+  // id, so the recovery code brings them to a new phone too. Only players with a name keep progress there.
+  var progressTimer=null;
+  var RECORD_IDS=['marathon','sprint','ta5','ta7','ta10','dig'], TIME_RECORDS={sprint:true, dig:true};
+  function progressData(){
+    var rec={};
+    RECORD_IDS.forEach(function(k){ rec[k]=Math.round(best[k]||0); });
+    return {skins:unlockedSkins.slice(), puzzles:solvedPuzzles.slice(), hints:usedHints.slice(), rec:rec, streak:streak};
+  }
+  function saveProgressSoon(){
+    if(!playerName) return;
+    clearTimeout(progressTimer);
+    progressTimer=setTimeout(function(){ post('/progress', {pid:playerId, data:progressData()}).catch(function(){}); },3000);
+  }
+  // Brings in progress from another phone: everything unlocked on either counts, and the better records win.
+  function mergeProgress(d){
+    (d.skins||[]).forEach(function(id){ if(skinIndex(id)>0 && !isUnlocked(id)) unlockedSkins.push(id); });
+    (d.puzzles||[]).forEach(function(i){ if(i<PUZZLES.length && solvedPuzzles.indexOf(i)===-1) solvedPuzzles.push(i); });
+    (d.hints||[]).forEach(function(i){ if(i<PUZZLES.length && usedHints.indexOf(i)===-1) usedHints.push(i); });
+    var rec=d.rec||{};
+    RECORD_IDS.forEach(function(k){
+      var v=rec[k]|0;
+      if(!v) return;
+      if(TIME_RECORDS[k] ? (!best[k] || v<best[k]) : v>best[k]) best[k]=v;
+    });
+    if(d.streak && (!streak || d.streak.last>streak.last || (d.streak.last===streak.last && d.streak.n>streak.n))) streak=d.streak;
+    writeStore('pocket-tetris-colors', JSON.stringify(unlockedSkins));
+    writeStore('pocket-tetris-puzzles', JSON.stringify(solvedPuzzles));
+    writeStore('pocket-tetris-hints', JSON.stringify(usedHints));
+    if(streak) writeStore('pocket-tetris-streak', JSON.stringify(streak));
+    saveBest();
+    renderMenu();
+    updateHud();
+  }
+  function loadProgress(){
+    return post('/progress/load', {pid:playerId}).then(function(r){ if(r && r.data) mergeProgress(r.data); saveProgressSoon(); }, function(){});
+  }
 
   /* ---------------- online battle ---------------- */
   // Two friends play the same pieces (the server hands both the same seed). Clearing 2+ lines sends
@@ -1618,6 +1885,7 @@
         else if(MODES[modeIdx].id==='puzzle') stepPuzzle(d);
         else if(MODES[modeIdx].id==='battle') battleOpt=1-battleOpt;
         else startLevel=(startLevel+d+10)%10;
+        challenge=null;
         selectionChanged();
       }
     }
@@ -1839,7 +2107,7 @@
       while(tickAcc>=Engine.TICK_MS && game.state!=='over'){ tickAcc-=Engine.TICK_MS; game.step(); stepped=true; }
       if(stepped) afterEngine();
       if(gameState==='playing' || gameState==='clearing'){
-        if(mode==='sprint' || onTheClock()) updateTimeHud();
+        if(raceMode() || onTheClock()) updateTimeHud();
         draw();
       }
     }
@@ -1887,9 +2155,12 @@
   showOverlay('TETRIS','','','main');
   powerLed.style.opacity='.35';
 
-  // An invite link (…/?room=1234) drops the friend straight into the room.
-  var linkRoom=new URLSearchParams(location.search).get('room');
-  if(linkRoom && /^\d{4}$/.test(linkRoom)){
+  // An invite link (…/?room=1234) drops the friend straight into the room; a challenge link (…/?c=abc234) opens the challenge.
+  var linkParams=new URLSearchParams(location.search), linkRoom=linkParams.get('room'), linkChallenge=linkParams.get('c');
+  if(linkChallenge && /^[a-z2-9]{6}$/.test(linkChallenge)){
+    history.replaceState(null,'',location.pathname);
+    openChallenge(linkChallenge);
+  } else if(linkRoom && /^\d{4}$/.test(linkRoom)){
     history.replaceState(null,'',location.pathname);
     modeIdx=MODES.map(function(m){ return m.id; }).indexOf('battle');
     selectionChanged();
