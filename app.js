@@ -1452,7 +1452,6 @@
   var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
   var BUTTON_BATTLE={cw:'go', start:'go', ccw:'back'};
   // repeat: the action comes from holding a button or dragging, not from a fresh press.
-  var placeHintFor=-1;
   function doAction(action,repeat){
     if(topOpen()){ topInput(BUTTON_BATTLE[action]); return; }
     if(battleUiOpen()){ battleInput(BUTTON_BATTLE[action]); return; }
@@ -1466,10 +1465,6 @@
       if(action==='soft' && !repeat && grounded) action='drop';
       game.act(action);
       afterEngine();
-      if(action==='soft' && mode==='puzzle' && game.state==='playing' && game.ghostY()===game.py && placeHintFor!==pieceSerial){
-        placeHintFor=pieceSerial;
-        showToast('PRESS DOWN AGAIN\nTO PLACE IT',1500);
-      }
       if(gameState==='playing' || gameState==='clearing') draw();
     }
   }
