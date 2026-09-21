@@ -15,26 +15,178 @@
   var menuRows=[$('rowMode'), $('rowLevel'), $('rowColor')];
   var colorValEl=$('colorVal'), colorHintEl=$('colorHint'), optCapEl=$('optCap');
   var levelLabel=$('levelLabel'), scoreLabel=$('scoreLabel'), timeLabel=$('timeLabel'), lvWrap=$('lvWrap'), goalText=$('goalText');
-  var restartBtn=$('restartBtn');
+  var restartBtn=$('restartBtn'), hintBtn=$('hintBtn'), hintRetryBtn=$('hintRetryBtn');
   var pauseMenuEl=$('pauseMenu'), resumeBtn=$('resumeBtn'), quitBtn=$('quitBtn'), overlayPrompt=$('overlayPrompt');
   var startPill=$('startPill'), startLabel=$('startLabel'), shareRow=$('shareRow'), shareBtn=$('shareBtn'), topBtn=$('topBtn');
   var topPanel=$('topPanel'), topText=$('topText'), topList=$('topList'), nameInput=$('nameInput');
   var topMain=$('topMain'), topAlt=$('topAlt'), topBack=$('topBack');
-  var muteBtn=$('muteBtn'), powerLed=$('powerLed');
+  var muteBtn=$('muteBtn'), langBtn=$('langBtn'), powerLed=$('powerLed');
   var consoleEl=$('console'), fitEl=$('fit'), belowEl=$('below'), screenEl=$('screen');
   var installBtn=$('installBtn'), iosHint=$('iosHint');
 
   var lvCells=[];
   for(var li=0;li<10;li++){ var cellEl=document.createElement('i'); lvBar.appendChild(cellEl); lvCells.push(cellEl); }
 
+  /* ---------------- language ---------------- */
+  // Every word the player sees, in Russian and English. The game starts in Russian on phones set to Russian
+  // (or another language of the region) and in English elsewhere; the RU/EN button switches it.
+  var TEXT={
+    ru:{
+      'mode.marathon':'МАРАФОН', 'mode.sprint':'40 ЛИНИЙ', 'mode.ultra':'НА ВРЕМЯ', 'mode.daily':'ИСПЫТАНИЕ ДНЯ', 'mode.puzzle':'ГОЛОВОЛОМКИ', 'mode.battle':'БИТВА',
+      'hint.marathon':'ИГРАЙ, ПОКА НЕ ЗАПОЛНИТСЯ ПОЛЕ', 'hint.sprint':'СОБЕРИ 40 ЛИНИЙ КАК МОЖНО БЫСТРЕЕ', 'hint.ultra':'НАБЕРИ БОЛЬШЕ ОЧКОВ ЗА ВРЕМЯ',
+      'hint.daily':'{0} - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ', 'hint.puzzle':'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ', 'hint.battle':'ОНЛАЙН ПРОТИВ ДРУГА',
+      'skin.classic':'КЛАССИКА', 'skin.purple':'ФИОЛЕТОВЫЙ', 'skin.teal':'БИРЮЗОВЫЙ', 'skin.yellow':'ЖЁЛТЫЙ', 'skin.red':'КРАСНЫЙ', 'skin.black':'ЧЁРНЫЙ', 'skin.gold':'ЗОЛОТОЙ',
+      'how.purple':'ОТКРОЕТСЯ ЗА ПЕРВЫЙ ТЕТРИС (4 ЛИНИИ РАЗОМ)', 'how.teal':'ОТКРОЕТСЯ ЗА СЕРИЮ X3', 'how.yellow':'ОТКРОЕТСЯ, КОГДА ПРОЙДЁШЬ 40 ЛИНИЙ',
+      'how.red':'ОТКРОЕТСЯ, КОГДА ДОИГРАЕШЬ ИСПЫТАНИЕ ДНЯ', 'how.black':'ОТКРОЕТСЯ ЗА 100 ЛИНИЙ В МАРАФОНЕ', 'how.gold':'ОТКРОЕТСЯ ЗА 50 000 ОЧКОВ',
+      newColor:'НОВЫЙ ЦВЕТ!\n{0}',
+      clear1:'1 ЛИНИЯ', clear2:'2 ЛИНИИ', clear3:'3 ЛИНИИ', clear4:'ТЕТРИС!', b2b:'ТЕТРИС ПОДРЯД', combo:'СЕРИЯ x{0}', sent:'СОПЕРНИКУ +{0}',
+      lines:'ЛИНИИ', clearAll:'ОЧИСТИ ПОЛЕ', vsFriend:'ПРОТИВ ДРУГА', incomingBar:'МУСОР +{0}', incoming:'МУСОР +{0}',
+      lblHold:'ЗАПАС', lblNext:'ДАЛЕЕ', lblRival:'СОПЕРНИК', lblLevel:'УРОВЕНЬ', lblScore:'ОЧКИ', lblTime:'ВРЕМЯ', lblTop:'РЕКОРД', lblBest:'ЛУЧШЕЕ',
+      lblPuzzle:'УРОВЕНЬ', lblPieces:'ФИГУРЫ', lblQueue:'ОЧЕРЕДЬ', lblSolved:'РЕШЕНО',
+      sound0:'МУЗЫКА 1\nКОРОБЕЙНИКИ', sound1:'МУЗЫКА 2\nМЕНУЭТ', sound2:'МУЗЫКА 3\nПЕЩЕРА ГОРНОГО КОРОЛЯ', sound3:'БЕЗ МУЗЫКИ\nЗВУКИ ВКЛЮЧЕНЫ', sound4:'ЗВУК ВЫКЛЮЧЕН',
+      pillStart:'СТАРТ', pillPause:'ПАУЗА', pillResume:'ДАЛЬШЕ', pillHold:'ЗАПАС', ariaStart:'Старт', ariaPause:'Пауза', ariaResume:'Продолжить',
+      pressStart:'НАЖМИ СТАРТ', puzzleStart:'УРОВЕНЬ {0}\n{1}', clearBoard:'ОЧИСТИ ПОЛЕ',
+      youWin:'ПОБЕДА!', youLose:'ПОРАЖЕНИЕ', gameOver:'КОНЕЦ ИГРЫ', complete:'ГОТОВО!', solvedTitle:'РЕШЕНО!', outOfPieces:'ФИГУРЫ КОНЧИЛИСЬ',
+      timeUp:'ВРЕМЯ ВЫШЛО', dailyTitle:'ИСПЫТАНИЕ {0}', subTime:'ВРЕМЯ {0}', subScore:'ОЧКИ {0}', subPuzzle:'УРОВЕНЬ {0}',
+      nextPuzzle:'СТАРТ - СЛЕДУЮЩИЙ УРОВЕНЬ', allSolved:'ВСЕ ГОЛОВОЛОМКИ РЕШЕНЫ!', tryAgain:'СТАРТ - ЕЩЁ РАЗ',
+      newRecord:'НОВЫЙ РЕКОРД', bestToday:'ЛУЧШИЙ ЗА ДЕНЬ', place:'МЕСТО {0} ИЗ {1}',
+      copied:'СКОПИРОВАНО', cannotShare:'НЕ ПОЛУЧИЛОСЬ', linkCopied:'ССЫЛКА СКОПИРОВАНА',
+      cardDaily:'ИСПЫТАНИЕ {0}', cardUltra:'НА ВРЕМЯ, {0} МИН', cardMarathon:'МАРАФОН', cardSprint:'40 ЛИНИЙ', cardPuzzle:'ГОЛОВОЛОМКА {0}',
+      cardScore:'ОЧКИ', cardLines:'ЛИНИИ', cardLevel:'УРОВЕНЬ', cardPlace:'МЕСТО', cardTime:'ВРЕМЯ', cardResult:'ИТОГ', cardPieces:'ФИГУРЫ',
+      cardSolved:'РЕШЕНО!', cardOf:'{0} ИЗ {1}',
+      shareSprintDone:'Pocket Tetris: собрал 40 линий за {0}! Сможешь быстрее?', shareSprint:'Pocket Tetris: собрал {0} из 40 линий. Попробуй пройти все!',
+      sharePuzzle:'Pocket Tetris: решил головоломку {0}! Сможешь очистить поле?',
+      shareDaily:'Pocket Tetris, испытание дня {0}: {1} очков!{2} Сегодня у всех одинаковые фигуры — сможешь больше?', shareDailyRank:' Я на {0}-м месте из {1}.',
+      shareUltra:'Pocket Tetris, {0} минут: {1} очков! Сможешь больше?', shareMarathon:'Pocket Tetris, марафон: {0} очков и {1} линий! Сможешь больше?',
+      invite:'Сыграем в Pocket Tetris один на один? Комната {0}:',
+      capMode:'РЕЖИМ', capStart:'С КАКОГО УРОВНЯ НАЧАТЬ', capLength:'СКОЛЬКО ИГРАТЬ', capRoom:'КОМНАТА', capPuzzle:'УРОВЕНЬ - РЕШЕНО {0} ИЗ {1}', capColor:'ЦВЕТ КОНСОЛИ',
+      unlocked:'ОТКРЫТО {0} ИЗ {1}', selLevel:'УРОВЕНЬ {0}', selMinutes:'{0} МИНУТ', selPuzzle:'УРОВЕНЬ {0}', roomNew:'НОВАЯ КОМНАТА', roomJoin:'ВОЙТИ ПО КОДУ',
+      pause:'ПАУЗА', 'continue':'ПРОДОЛЖИТЬ', restart:'ЗАНОВО', quit:'В МЕНЮ', hint:'ПОДСКАЗКА',
+      shareResult:'ПОДЕЛИТЬСЯ', dailyTop:'РЕКОРДЫ ДНЯ',
+      battleTitle:'БИТВА', roomTitle:'КОМНАТА {0}', joinTitle:'ВХОД В КОМНАТУ', inviteFriend:'ПОЗВАТЬ ДРУГА', leave:'ВЫЙТИ', ready:'ГОТОВ', rematch:'РЕВАНШ',
+      join:'ВОЙТИ', back:'НАЗАД', cancel:'ОТМЕНА',
+      bFriendLeftRoom:'ДРУГ ВЫШЕЛ ИЗ КОМНАТЫ', bWaitRematch:'ЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ «РЕВАНШ»', bWantsRematch:'ДРУГ ХОЧЕТ РЕВАНШ!', bAgain:'СЫГРАЕМ ЕЩЁ?',
+      bWaitFriend:'ЖДЁМ ДРУГА...\nОТПРАВЬ ЕМУ ПРИГЛАШЕНИЕ\nИЛИ КОД {0}', bYouReady:'ТЫ ГОТОВ!\nЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ «ГОТОВ»',
+      bFriendReady:'ДРУГ ГОТОВ!', bFriendHere:'ДРУГ В КОМНАТЕ!', bPressReady:'НАЖМИ «ГОТОВ», КОГДА ГОТОВ',
+      bConnecting:'ПОДКЛЮЧАЕМСЯ К СЕРВЕРУ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ', bTooMany:'СЛИШКОМ МНОГО КОМНАТ.\nПОДОЖДИ НЕСКОЛЬКО МИНУТ',
+      bNoServer:'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ', bEnterCode:'ВВЕДИ КОД КОМНАТЫ\nИЗ 4 ЦИФР', bNeed4:'НУЖНО 4 ЦИФРЫ',
+      bJoining:'ПОДКЛЮЧАЕМСЯ...\nЭТО ЗАЙМЁТ ДО МИНУТЫ', bRoomTaken:'КОМНАТА {0}\nУЖЕ ЗАНЯТА', bRoomMissing:'КОМНАТА {0}\nНЕ НАЙДЕНА',
+      bFriendQuit:'ДРУГ ВЫШЕЛ ИЗ ИГРЫ', bConnLost:'СВЯЗЬ ПОТЕРЯНА', bRoomLost:'СВЯЗЬ С КОМНАТОЙ\nПОТЕРЯНА', bResumeIn:'ИГРА ПРОДОЛЖИТСЯ\nЧЕРЕЗ {0}',
+      bRivalGone:'СОПЕРНИК ПРОПАЛ', bAway:'ТЫ ДОЛГО БЫЛ\nВНЕ ИГРЫ', bRivalLost:'СОПЕРНИК ПРОИГРАЛ', bYourConn:'ТВОЯ СВЯЗЬ ПРОПАЛА', go:'ВПЕРЁД!',
+      topTitle:'РЕКОРДЫ {0}', play:'ИГРАТЬ', myName:'МОЁ ИМЯ', save:'СОХРАНИТЬ', haveCode:'У МЕНЯ ЕСТЬ КОД', restore:'ВОССТАНОВИТЬ', changeName:'СМЕНИТЬ ИМЯ', retry:'ПОВТОРИТЬ',
+      tLoading:'ЗАГРУЖАЕМ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ', tNoServer:'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ',
+      tAskName:'ИМЯ ДЛЯ ТАБЛИЦЫ РЕКОРДОВ\nДО 10 БУКВ И ЦИФР', tAskCode:'КОД ВОССТАНОВЛЕНИЯ\nСО СТАРОГО ТЕЛЕФОНА',
+      tProfile:'ИМЯ: {0}\n\nКОД ВОССТАНОВЛЕНИЯ:\n{1}\n\nЗАПИШИ ЕГО: С НИМ ИМЯ\nВЕРНЁТСЯ НА ДРУГОМ ТЕЛЕФОНЕ.\nНИКОМУ ЕГО НЕ ПОКАЗЫВАЙ',
+      tNobody:'СЕГОДНЯ ЕЩЁ НИКТО НЕ ИГРАЛ.\nБУДЬ ПЕРВЫМ!', tPlayers:'ИГРОКОВ СЕГОДНЯ: {0}', tPlayToJoin:'СЫГРАЙ, ЧТОБЫ ПОПАСТЬ В СПИСОК',
+      tUpdate:'ОБНОВИ СТРАНИЦУ, ЧТОБЫ\nРЕЗУЛЬТАТ ПОПАЛ В СПИСОК', tNameLost:'ИМЯ {0} УЖЕ ЗАНЯТО,\nВЫБЕРИ ДРУГОЕ', tNameTaken:'ИМЯ {0} УЖЕ ЗАНЯТО',
+      tBadName:'ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ', tBadCode:'В КОДЕ 16 ЗНАКОВ:\nЦИФРЫ И БУКВЫ A-F', tNoCode:'ТАКОЙ КОД НЕ НАЙДЕН',
+      ariaCode:'Код восстановления', ariaName:'Имя в таблице рекордов',
+      hintOn:'ПОДСКАЗКА:\nСТАВЬ ФИГУРУ\nНА ПОДСВЕТКУ', hintHold:'НАЖМИ «ЗАПАС»', hintOff:'ФИГУРА НЕ ТАМ -\nПОДСКАЗКА ВЫКЛЮЧЕНА',
+      langName:'РУССКИЙ', install:'Установить как приложение',
+      iosHint:'Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b>',
+      ariaSound:'Звук', ariaLang:'Язык: русский. Нажми, чтобы переключить на английский', ariaPrevMode:'Предыдущий режим', ariaNextMode:'Следующий режим',
+      ariaLess:'Меньше', ariaMore:'Больше', ariaPrevColor:'Предыдущий цвет консоли', ariaNextColor:'Следующий цвет консоли', ariaRoom:'Код комнаты',
+      ariaLeft:'Влево', ariaRight:'Вправо', ariaDrop:'Сбросить вниз', ariaSoft:'Опустить ниже', ariaCcw:'Повернуть против часовой', ariaCw:'Повернуть по часовой',
+      ariaHold:'Отложить фигуру в запас'
+    },
+    en:{
+      'mode.marathon':'MARATHON', 'mode.sprint':'40 LINES', 'mode.ultra':'TIME ATTACK', 'mode.daily':'DAILY', 'mode.puzzle':'PUZZLES', 'mode.battle':'BATTLE',
+      'hint.marathon':'PLAY UNTIL THE BOARD FILLS UP', 'hint.sprint':'CLEAR 40 LINES AS FAST AS YOU CAN', 'hint.ultra':'SCORE AS MUCH AS YOU CAN IN TIME',
+      'hint.daily':'{0} - SAME PIECES FOR EVERYONE', 'hint.puzzle':'CLEAR THE BOARD, PIECES DON\'T FALL', 'hint.battle':'ONLINE AGAINST A FRIEND',
+      'skin.classic':'CLASSIC', 'skin.purple':'PURPLE', 'skin.teal':'TEAL', 'skin.yellow':'YELLOW', 'skin.red':'RED', 'skin.black':'BLACK', 'skin.gold':'GOLD',
+      'how.purple':'UNLOCKS WITH YOUR FIRST TETRIS (4 LINES)', 'how.teal':'UNLOCKS WITH A COMBO X3', 'how.yellow':'UNLOCKS WHEN YOU FINISH 40 LINES',
+      'how.red':'UNLOCKS WHEN YOU FINISH A DAILY', 'how.black':'UNLOCKS WITH 100 LINES IN MARATHON', 'how.gold':'UNLOCKS AT 50 000 POINTS',
+      newColor:'NEW COLOR!\n{0}',
+      clear1:'SINGLE', clear2:'DOUBLE', clear3:'TRIPLE', clear4:'TETRIS', b2b:'BACK-TO-BACK', combo:'COMBO x{0}', sent:'SENT {0}',
+      lines:'LINES', clearAll:'CLEAR ALL', vsFriend:'VS FRIEND', incomingBar:'INCOMING {0}', incoming:'INCOMING {0}',
+      lblHold:'HOLD', lblNext:'NEXT', lblRival:'RIVAL', lblLevel:'LEVEL', lblScore:'SCORE', lblTime:'TIME', lblTop:'TOP', lblBest:'BEST',
+      lblPuzzle:'PUZZLE', lblPieces:'PIECES', lblQueue:'QUEUE', lblSolved:'SOLVED',
+      sound0:'MUSIC 1\nKOROBEINIKI', sound1:'MUSIC 2\nMINUET', sound2:'MUSIC 3\nMOUNTAIN KING', sound3:'NO MUSIC\nSOUNDS ON', sound4:'SOUND OFF',
+      pillStart:'START', pillPause:'PAUSE', pillResume:'RESUME', pillHold:'HOLD', ariaStart:'Start', ariaPause:'Pause', ariaResume:'Resume',
+      pressStart:'PRESS START', puzzleStart:'PUZZLE {0}\n{1}', clearBoard:'CLEAR THE BOARD',
+      youWin:'YOU WIN!', youLose:'YOU LOSE', gameOver:'GAME OVER', complete:'COMPLETE', solvedTitle:'SOLVED!', outOfPieces:'OUT OF PIECES',
+      timeUp:'TIME UP', dailyTitle:'DAILY {0}', subTime:'TIME {0}', subScore:'SCORE {0}', subPuzzle:'PUZZLE {0}',
+      nextPuzzle:'START: NEXT PUZZLE', allSolved:'ALL PUZZLES SOLVED!', tryAgain:'START: TRY AGAIN',
+      newRecord:'NEW RECORD', bestToday:'BEST TODAY', place:'PLACE {0} OF {1}',
+      copied:'COPIED', cannotShare:'CANNOT SHARE', linkCopied:'LINK COPIED',
+      cardDaily:'DAILY {0}', cardUltra:'TIME ATTACK {0} MIN', cardMarathon:'MARATHON', cardSprint:'40 LINES', cardPuzzle:'PUZZLE {0}',
+      cardScore:'SCORE', cardLines:'LINES', cardLevel:'LEVEL', cardPlace:'PLACE', cardTime:'TIME', cardResult:'RESULT', cardPieces:'PIECES',
+      cardSolved:'SOLVED!', cardOf:'{0} OF {1}',
+      shareSprintDone:'Pocket Tetris: 40 lines in {0}! Can you be faster?', shareSprint:'Pocket Tetris: {0} of 40 lines. Try to clear them all!',
+      sharePuzzle:'Pocket Tetris: I solved puzzle {0}! Can you clear the board?',
+      shareDaily:'Pocket Tetris, daily challenge {0}: {1} points!{2} Everyone gets the same pieces today — can you beat it?', shareDailyRank:' I\'m number {0} of {1}.',
+      shareUltra:'Pocket Tetris, {0} minutes: {1} points! Can you beat it?', shareMarathon:'Pocket Tetris, marathon: {0} points and {1} lines! Can you beat it?',
+      invite:'Play Pocket Tetris one on one? Room {0}:',
+      capMode:'MODE', capStart:'START LEVEL', capLength:'LENGTH', capRoom:'ROOM', capPuzzle:'LEVEL - SOLVED {0} OF {1}', capColor:'CONSOLE COLOR',
+      unlocked:'UNLOCKED {0} OF {1}', selLevel:'LEVEL {0}', selMinutes:'{0} MINUTES', selPuzzle:'PUZZLE {0}', roomNew:'NEW ROOM', roomJoin:'JOIN ROOM',
+      pause:'PAUSE', 'continue':'CONTINUE', restart:'RESTART', quit:'QUIT TO MENU', hint:'HINT',
+      shareResult:'SHARE RESULT', dailyTop:'DAILY TOP',
+      battleTitle:'BATTLE', roomTitle:'ROOM {0}', joinTitle:'JOIN ROOM', inviteFriend:'INVITE FRIEND', leave:'LEAVE', ready:'READY', rematch:'REMATCH',
+      join:'JOIN', back:'BACK', cancel:'CANCEL',
+      bFriendLeftRoom:'YOUR FRIEND LEFT THE ROOM', bWaitRematch:'WAITING FOR YOUR FRIEND\nTO PRESS REMATCH', bWantsRematch:'YOUR FRIEND WANTS A REMATCH!', bAgain:'PLAY AGAIN?',
+      bWaitFriend:'WAITING FOR A FRIEND...\nSEND AN INVITE\nOR THE CODE {0}', bYouReady:'YOU ARE READY!\nWAITING FOR YOUR FRIEND\nTO PRESS READY',
+      bFriendReady:'YOUR FRIEND IS READY!', bFriendHere:'YOUR FRIEND IS HERE!', bPressReady:'PRESS READY WHEN YOU ARE',
+      bConnecting:'CONNECTING TO THE SERVER...\nTHE FIRST TIME TODAY\nTAKES UP TO A MINUTE', bTooMany:'TOO MANY ROOMS.\nWAIT A FEW MINUTES',
+      bNoServer:'CANNOT REACH THE SERVER.\nCHECK THE INTERNET', bEnterCode:'ENTER THE 4-DIGIT\nROOM CODE', bNeed4:'IT NEEDS 4 DIGITS',
+      bJoining:'CONNECTING...\nTAKES UP TO A MINUTE', bRoomTaken:'ROOM {0}\nIS FULL', bRoomMissing:'ROOM {0}\nNOT FOUND',
+      bFriendQuit:'YOUR FRIEND LEFT THE GAME', bConnLost:'CONNECTION LOST', bRoomLost:'LOST THE CONNECTION\nTO THE ROOM', bResumeIn:'RESUMING\nIN {0}',
+      bRivalGone:'YOUR RIVAL VANISHED', bAway:'YOU WERE AWAY\nTOO LONG', bRivalLost:'YOUR RIVAL LOST', bYourConn:'YOUR CONNECTION DROPPED', go:'GO!',
+      topTitle:'DAILY {0}', play:'PLAY', myName:'MY NAME', save:'SAVE', haveCode:'I HAVE A CODE', restore:'RESTORE', changeName:'CHANGE NAME', retry:'RETRY',
+      tLoading:'LOADING...\nTHE FIRST TIME TODAY\nTAKES UP TO A MINUTE', tNoServer:'CANNOT REACH THE SERVER.\nCHECK THE INTERNET',
+      tAskName:'YOUR NAME FOR THE DAILY TOP\nUP TO 10 LETTERS AND DIGITS', tAskCode:'RECOVERY CODE\nFROM YOUR OLD PHONE',
+      tProfile:'NAME: {0}\n\nRECOVERY CODE:\n{1}\n\nWRITE IT DOWN: IT BRINGS YOUR\nNAME BACK ON ANOTHER PHONE.\nDON\'T SHOW IT TO ANYONE',
+      tNobody:'NOBODY HAS PLAYED TODAY.\nBE THE FIRST!', tPlayers:'PLAYERS TODAY: {0}', tPlayToJoin:'PLAY TO GET ON THE LIST',
+      tUpdate:'RELOAD THE PAGE TO GET\nYOUR SCORE ON THE LIST', tNameLost:'THE NAME {0} IS TAKEN,\nPICK ANOTHER', tNameTaken:'THE NAME {0} IS TAKEN',
+      tBadName:'ONLY LETTERS AND DIGITS,\nUP TO 10', tBadCode:'THE CODE HAS 16 CHARACTERS:\nDIGITS AND LETTERS A-F', tNoCode:'NO SUCH CODE',
+      ariaCode:'Recovery code', ariaName:'Name for the daily top',
+      hintOn:'HINT: PUT THE\nPIECE ON THE\nMARKED CELLS', hintHold:'PRESS HOLD', hintOff:'OFF THE PLAN -\nTHE HINT IS OFF',
+      langName:'ENGLISH', install:'Install as an app',
+      iosHint:'To install on iPhone: tap <b>•••</b> or the Share icon (a square with an up arrow) &rarr; <b>Add to Home Screen</b>',
+      ariaSound:'Sound', ariaLang:'Language: English. Tap to switch to Russian', ariaPrevMode:'Previous mode', ariaNextMode:'Next mode',
+      ariaLess:'Less', ariaMore:'More', ariaPrevColor:'Previous console color', ariaNextColor:'Next console color', ariaRoom:'Room code',
+      ariaLeft:'Left', ariaRight:'Right', ariaDrop:'Drop', ariaSoft:'Move down', ariaCcw:'Rotate counterclockwise', ariaCw:'Rotate clockwise',
+      ariaHold:'Hold the piece'
+    }
+  };
+  // Level tips come from puzzles.js in English.
+  var RU_TIPS={'SOFT DROP,\nTHEN SLIDE\nUNDER THE LEDGE':'ОПУСТИ ФИГУРУ\nИ ЗАДВИНЬ ЕЁ\nПОД НАВЕС'};
+  var lang=readStore('pocket-tetris-lang');
+  if(lang!=='ru' && lang!=='en') lang = /^(ru|kk|uk|be|ky|uz|tg|az|hy)\b/i.test(navigator.language||'') ? 'ru' : 'en';
+  // t('key', a, b) fills {0}, {1} in the text.
+  function t(key){
+    var s=TEXT[lang][key];
+    if(s===undefined) s=TEXT.en[key];
+    if(s===undefined) return String(key);
+    for(var i=1;i<arguments.length;i++) s=s.split('{'+(i-1)+'}').join(String(arguments[i]));
+    return s;
+  }
+  function tipText(tip){ return lang==='ru' && RU_TIPS[tip] || tip; }
+  // Fixed texts in index.html carry their key in data-t (text) or data-ta (aria-label).
+  function applyLang(){
+    document.documentElement.lang=lang;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function(el){ el.textContent=t(el.getAttribute('data-t')); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ta]'), function(el){ el.setAttribute('aria-label', t(el.getAttribute('data-ta'))); });
+    iosHint.innerHTML=t('iosHint');
+    langBtn.textContent = lang==='ru' ? 'RU' : 'EN';
+  }
+  function switchLang(){
+    lang = lang==='ru' ? 'en' : 'ru';
+    writeStore('pocket-tetris-lang', lang);
+    applyLang();
+    renderMenu();
+    updateHud();
+    if(topOpen()) renderTop();
+    else if(battleUiOpen() && (battle.stage==='lobby' || battle.stage==='over')) renderLobby();
+    else if(gameState==='paused') showOverlay(t('pause'),'',statsLine(),'pause');
+    else if(gameState==='ready' && !overlay.hidden) showOverlay('TETRIS','','','main');
+    if(overlay.hidden) setStartLabel(t('pillPause'), t('ariaPause'));
+    showToast(t('langName'),1000);
+  }
+  langBtn.addEventListener('click', switchLang);
+
   /* ---------------- modes ---------------- */
   var MODES=[
-    {id:'marathon', name:'MARATHON', hint:'БЕСКОНЕЧНАЯ ИГРА'},
-    {id:'sprint', name:'40 LINES', hint:'СОБЕРИ 40 ЛИНИЙ НА ВРЕМЯ'},
-    {id:'ultra', name:'TIME ATTACK', hint:'МАКСИМУМ ОЧКОВ ЗА ВРЕМЯ'},
-    {id:'daily', name:'DAILY', hint:''},
-    {id:'puzzle', name:'PUZZLES', hint:'ОЧИСТИ ПОЛЕ, ФИГУРЫ НЕ ПАДАЮТ САМИ'},
-    {id:'battle', name:'BATTLE', hint:'ОНЛАЙН ПРОТИВ ДРУГА'}
+    {id:'marathon'}, {id:'sprint'}, {id:'ultra'}, {id:'daily'}, {id:'puzzle'}, {id:'battle'}
   ];
 
   /* ---------------- puzzles ---------------- */
@@ -57,6 +209,43 @@
   function timeLimit(){ return minutes()*60000; }
   function linesPerLevel(){ return onTheClock() ? minutes() : 10; }
   function recordId(){ return mode==='ultra' ? 'ta'+DURATIONS[durIdx] : mode; }
+
+  /* ---------------- puzzle hints ---------------- */
+  // Each level carries one solution from the generator. A player gets one hint per level, for good: it restarts
+  // the level and shows, step by step, the cells the current piece should land on (or asks for HOLD).
+  // Placing a piece anywhere else turns the hint off.
+  var usedHints=[], hint=null;
+  function hintSteps(i){
+    return (PUZZLES[i].hint||[]).map(function(s){
+      if(s==='H') return {hold:true};
+      var p=s.split(':');
+      return {piece:p[0], cells:p[1].split(' ').map(function(c){ var xy=c.split(','); return [+xy[0], +xy[1]]; })};
+    });
+  }
+  function hintAvailable(){ return mode==='puzzle' && !!PUZZLES[puzzleIdx] && !!PUZZLES[puzzleIdx].hint && usedHints.indexOf(puzzleIdx)===-1; }
+  function useHint(){
+    if(!hintAvailable()) return;
+    usedHints.push(puzzleIdx);
+    writeStore('pocket-tetris-hints', JSON.stringify(usedHints));
+    startGame(true);
+  }
+  function hintStep(){ return hint && hint.steps[hint.at]; }
+  function hintPrompt(){ var st=hintStep(); if(st && st.hold) showToast(t('hintHold'),1800); }
+  function hintOff(){ hint=null; showToast(t('hintOff'),1800); }
+  function cellsKey(cells){ return cells.map(function(c){ return c[0]+','+c[1]; }).sort().join(' '); }
+  function hintOnLock(cells){
+    var st=hintStep();
+    if(!st) return;
+    if(st.hold || cellsKey(st.cells)!==cellsKey(cells)){ hintOff(); return; }
+    hint.at++;
+    hintPrompt();
+  }
+  function hintOnHold(){
+    var st=hintStep();
+    if(!st) return;
+    if(!st.hold){ hintOff(); return; }
+    hint.at++;
+  }
 
   /* ---------------- daily challenge ---------------- */
   // Everyone gets the same piece order on the same day: the shuffle is seeded with the date.
@@ -83,13 +272,13 @@
   /* ---------------- console colors, unlocked by achievements ---------------- */
   var SKIN_VARS=['--shell','--shell-hi','--shell-lo','--ink','--mark','--btn-hi','--btn','--btn-lo','--btn-shadow','--btn-ink','--pill-hi','--pill-lo','--pill-ink'];
   var SKINS=[
-    {id:'classic', name:'CLASSIC', how:'', c:['#a9a692','#c9c6b0','#726f5e','#2b2a26','#a83232','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#918e7c','#5f5c4d','#2b2a26']},
-    {id:'purple', name:'PURPLE', how:'ОТКРОЕТСЯ ЗА ПЕРВЫЙ ТЕТРИС', c:['#6d5a9c','#9b89c9','#45386a','#1c1530','#f2d4ff','#d9607a','#b8324a','#7d2033','#561626','#2a0a12','#7f6daf','#4a3d73','#e9e2ff']},
-    {id:'teal', name:'TEAL', how:'ОТКРОЕТСЯ ЗА КОМБО X3', c:['#3d8c86','#6cb8b1','#255e5a','#0d2624','#f5e27a','#f2d66b','#d9b43a','#9c7f1f','#6e5815','#3a2e06','#4f9c96','#2c6a65','#e2f5f3']},
-    {id:'yellow', name:'YELLOW', how:'ОТКРОЕТСЯ ЗА ФИНИШ 40 LINES', c:['#d9b93c','#f1d970','#9d8526','#3a2f08','#2f5ea8','#5d8fd6','#3a6db5','#274c80','#1b3559','#0c1a2e','#c7a93a','#8c7420','#2e2506']},
-    {id:'red', name:'RED', how:'ОТКРОЕТСЯ ЗА DAILY ДО КОНЦА', c:['#b3403d','#d7706b','#7c2826','#2e0c0b','#f6e7c8','#5a5852','#3b3a36','#22211e','#121110','#d8d4c8','#9a3532','#6a2220','#f6e7c8']},
-    {id:'black', name:'BLACK', how:'ОТКРОЕТСЯ ЗА 100 ЛИНИЙ В MARATHON', c:['#2f2f35','#4b4b54','#18181c','#c9c9d1','#e0474a','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#45454d','#25252a','#d6d6de']},
-    {id:'gold', name:'GOLD', how:'ОТКРОЕТСЯ ЗА 50 000 ОЧКОВ', c:['#c8a24a','#ebd18b','#8a6c26','#2e2206','#7a1f1f','#b54848','#8e2a2a','#611b1b','#401111','#f3dca0','#b08d3c','#7a6020','#2e2206']}
+    {id:'classic', c:['#a9a692','#c9c6b0','#726f5e','#2b2a26','#a83232','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#918e7c','#5f5c4d','#2b2a26']},
+    {id:'purple', c:['#6d5a9c','#9b89c9','#45386a','#1c1530','#f2d4ff','#d9607a','#b8324a','#7d2033','#561626','#2a0a12','#7f6daf','#4a3d73','#e9e2ff']},
+    {id:'teal', c:['#3d8c86','#6cb8b1','#255e5a','#0d2624','#f5e27a','#f2d66b','#d9b43a','#9c7f1f','#6e5815','#3a2e06','#4f9c96','#2c6a65','#e2f5f3']},
+    {id:'yellow', c:['#d9b93c','#f1d970','#9d8526','#3a2f08','#2f5ea8','#5d8fd6','#3a6db5','#274c80','#1b3559','#0c1a2e','#c7a93a','#8c7420','#2e2506']},
+    {id:'red', c:['#b3403d','#d7706b','#7c2826','#2e0c0b','#f6e7c8','#5a5852','#3b3a36','#22211e','#121110','#d8d4c8','#9a3532','#6a2220','#f6e7c8']},
+    {id:'black', c:['#2f2f35','#4b4b54','#18181c','#c9c9d1','#e0474a','#c95555','#a83232','#7a2222','#5e1717','#2a0e0e','#45454d','#25252a','#d6d6de']},
+    {id:'gold', c:['#c8a24a','#ebd18b','#8a6c26','#2e2206','#7a1f1f','#b54848','#8e2a2a','#611b1b','#401111','#f3dca0','#b08d3c','#7a6020','#2e2206']}
   ];
   // skinIdx is what the menu shows (and previews on the console); appliedSkin is the last unlocked choice.
   var unlockedSkins=['classic'], skinIdx=0, appliedSkin='classic';
@@ -103,9 +292,8 @@
     if(isUnlocked(id)) return;
     unlockedSkins.push(id);
     writeStore('pocket-tetris-colors', JSON.stringify(unlockedSkins));
-    var name=SKINS[skinIndex(id)].name;
     // Shown after the line-clear toast so the two messages don't overwrite each other.
-    setTimeout(function(){ showToast('NEW COLOR!\n'+name,1800); sfxLevel(); },900);
+    setTimeout(function(){ showToast(t('newColor', t('skin.'+id)),1800); sfxLevel(); },900);
   }
 
   var modeIdx=0, mode='marathon', startLevel=0, durIdx=0, menuRow=0, menuLockUntil=0;
@@ -118,7 +306,6 @@
 
   /* ---------------- pieces ---------------- */
   var SHAPES=Engine.SHAPES, KEYS=Engine.KEYS;
-  var CLEAR_NAMES=['','SINGLE','DOUBLE','TRIPLE','TETRIS'];
 
   /* ---------------- palettes ---------------- */
   var PALETTES=[
@@ -175,15 +362,16 @@
   function onEngineEvent(e){
     switch(e.t){
       case 'move': sfxMove(); break;
-      case 'rotate': case 'hold': sfxRotate(); break;
-      case 'lock': sfxLock(); break;
+      case 'rotate': sfxRotate(); break;
+      case 'hold': sfxRotate(); if(hint) hintOnHold(); break;
+      case 'lock': sfxLock(); if(hint) hintOnLock(e.cells); break;
       case 'spawn': sendBoard(); break;
       case 'level': applyPalette(Math.floor(level/5)); sfxLevel(); break;
       case 'clear':
-        var msg=CLEAR_NAMES[e.n];
-        if(e.b2b) msg+='\nBACK-TO-BACK';
-        if(e.sent>0){ sendMsg('attack', e.sent); msg+='\nSENT '+e.sent; }
-        if(e.combo>0) msg+='\nCOMBO x'+e.combo;
+        var msg=t('clear'+e.n);
+        if(e.b2b) msg+='\n'+t('b2b');
+        if(e.sent>0){ sendMsg('attack', e.sent); msg+='\n'+t('sent', e.sent); }
+        if(e.combo>0) msg+='\n'+t('combo', e.combo);
         if(e.leveledUp) applyPalette(Math.floor(level/5));
         if(mode!=='puzzle'){
           if(e.n===4) unlockSkin('purple');
@@ -245,28 +433,28 @@
     scoreVal.parentNode.hidden = isBattle;
     topVal.parentNode.hidden = isBattle;
     if(isBattle){
-      goalText.textContent = battle.pending>0 ? 'INCOMING '+battle.pending : 'VS FRIEND';
-      levelLabel.textContent='LEVEL';
+      goalText.textContent = battle.pending>0 ? t('incomingBar', battle.pending) : t('vsFriend');
+      levelLabel.textContent=t('lblLevel');
       setNum(levelVal,level);
       timePanel.hidden=true;
       return;
     }
     if(isPuzzle){
-      goalText.textContent='CLEAR ALL';
+      goalText.textContent=t('clearAll');
       // The side panels switch roles: which puzzle, pieces left, the pieces after NEXT, and overall progress.
       var p=PUZZLES[puzzleIdx];
       var left = inGame() ? puzzleQueue.length+(nextKey?1:0)+(heldKey?1:0)+(piece?1:0) : p.pieces.length;
       var upcoming = inGame() ? puzzleQueue.join('') : p.pieces.slice(2);
-      levelLabel.textContent='PUZZLE'; setNum(levelVal,puzzleName(puzzleIdx));
-      scoreLabel.textContent='PIECES'; setNum(scoreVal,left);
+      levelLabel.textContent=t('lblPuzzle'); setNum(levelVal,puzzleName(puzzleIdx));
+      scoreLabel.textContent=t('lblPieces'); setNum(scoreVal,left);
       timePanel.hidden=false;
-      timeLabel.textContent='QUEUE'; setNum(timeVal,upcoming||'-');
-      topLabel.textContent='SOLVED'; setNum(topVal,solvedPuzzles.length+'/'+PUZZLES.length);
+      timeLabel.textContent=t('lblQueue'); setNum(timeVal,upcoming||'-');
+      topLabel.textContent=t('lblSolved'); setNum(topVal,solvedPuzzles.length+'/'+PUZZLES.length);
       return;
     }
-    levelLabel.textContent='LEVEL';
-    scoreLabel.textContent='SCORE';
-    timeLabel.textContent='TIME';
+    levelLabel.textContent=t('lblLevel');
+    scoreLabel.textContent=t('lblScore');
+    timeLabel.textContent=t('lblTime');
     var toGo, filled;
     if(mode==='sprint'){
       toGo=Math.max(0,SPRINT_LINES-lines);
@@ -281,7 +469,7 @@
     setNum(levelVal,level);
     setNum(scoreVal,score);
     timePanel.hidden = mode==='marathon';
-    topLabel.textContent = mode==='marathon' ? 'TOP' : 'BEST';
+    topLabel.textContent = mode==='marathon' ? t('lblTop') : t('lblBest');
     setNum(topVal,bestText());
     lastTimeText='';
     if(!timePanel.hidden) updateTimeHud();
@@ -310,6 +498,13 @@
       }
     }
     if(game && piece && (gameState==='playing' || gameState==='paused')){
+      var hs=hintStep();
+      if(hs && !hs.hold && hs.piece===pieceKey){
+        bctx.fillStyle=pal.mid;
+        bctx.globalAlpha=.45;
+        hs.cells.forEach(function(cell){ drawBlock(bctx, cell[0]*c, cell[1]*c, c, pal.mid); });
+        bctx.globalAlpha=1;
+      }
       var gy=game.ghostY(), lw=gapFor(c);
       bctx.strokeStyle=pal.mid;
       bctx.lineWidth=lw;
@@ -471,7 +666,6 @@
   ];
   // The sound button cycles: music 1, 2, 3, sound effects only, everything off.
   var SOUND_LABELS=['♪1','♪2','♪3','FX','×'];
-  var SOUND_TOASTS=['MUSIC 1\nKOROBEINIKI','MUSIC 2\nMINUET','MUSIC 3\nMOUNTAIN KING','NO MUSIC\nSOUNDS ON','SOUND OFF'];
   var soundMode=0;
 
   var tuneTimeout=null, tuneBus=null;
@@ -505,7 +699,7 @@
     stopTune();
     if(!muted) ensureAudio();
     if(gameState==='playing') scheduleTune();
-    showToast(SOUND_TOASTS[soundMode],1300);
+    showToast(t('sound'+soundMode),1300);
   });
 
   ['pointerup','touchend','click','keydown'].forEach(function(type){
@@ -527,7 +721,7 @@
     overlayPrompt.hidden = kind!=='main';
     overlay.hidden=false;
     renderShareRow();
-    setStartLabel(kind==='pause' ? 'RESUME' : 'START', kind==='pause' ? 'Продолжить' : 'Старт');
+    setStartLabel(kind==='pause' ? t('pillResume') : t('pillStart'), kind==='pause' ? t('ariaResume') : t('ariaStart'));
   }
   // SHARE after a finished game (not a failed puzzle); DAILY TOP whenever the menu is on DAILY.
   function renderShareRow(){
@@ -535,20 +729,23 @@
     var failedPuzzle = lastResult && lastResult.mode==='puzzle' && lastResult.kind!=='solved';
     var canShare = onMain && gameState==='gameover' && !!lastResult && !failedPuzzle;
     var canTop = onMain && MODES[modeIdx].id==='daily';
+    // After a failed puzzle, the level's one hint can be spent on a guided retry.
+    var canHint = onMain && gameState==='gameover' && failedPuzzle && hintAvailable();
     shareBtn.hidden=!canShare;
     topBtn.hidden=!canTop;
-    shareRow.hidden=!(canShare || canTop);
+    hintRetryBtn.hidden=!canHint;
+    shareRow.hidden=!(canShare || canTop || canHint);
   }
   function hideOverlay(){
     overlay.hidden=true;
-    setStartLabel('PAUSE','Пауза');
+    setStartLabel(t('pillPause'), t('ariaPause'));
   }
   function setStartLabel(text,aria){
     startLabel.textContent=text;
     startPill.setAttribute('aria-label',aria);
   }
 
-  function startGame(){
+  function startGame(withHint){
     if(!isUnlocked(SKINS[skinIdx].id)){ skinIdx=skinIndex(appliedSkin); applySkin(appliedSkin); }
     ensureAudio();
     mode=MODES[modeIdx].id;
@@ -565,9 +762,13 @@
     scheduleTune();
     afterEngine();
     draw();
-    if(mode==='puzzle'){
+    hint = withHint && mode==='puzzle' ? {steps:hintSteps(puzzleIdx), at:0} : null;
+    if(hint){
+      showToast(t('hintOn'),2600);
+      if(hintStep().hold) setTimeout(hintPrompt,2700);
+    } else if(mode==='puzzle'){
       var tip=PUZZLES[puzzleIdx].tip;
-      showToast('PUZZLE '+puzzleName(puzzleIdx)+'\n'+(tip || 'CLEAR THE BOARD'), tip ? 3000 : 1600);
+      showToast(t('puzzleStart', puzzleName(puzzleIdx), tip ? tipText(tip) : t('clearBoard')), tip ? 3000 : 1600);
     }
     // The free server sleeps when idle; wake it now so the daily top is ready when the game ends.
     if(mode==='daily') wakeServer();
@@ -581,6 +782,7 @@
 
   function endGame(kind){
     gameState='gameover';
+    hint=null;
     stopTune();
     stopAllRepeats();
     gesture=null;
@@ -590,7 +792,7 @@
       var won = kind==='win';
       if(!won) sendMsg('lost');
       battle.stage='over';
-      battle.title = won ? 'YOU WIN!' : 'YOU LOSE';
+      battle.title = won ? 'youWin' : 'youLose';
       if(won) sfxLevel(); else sfxGameOver();
       updateHud();
       draw();
@@ -598,32 +800,32 @@
       renderLobby();
       return;
     }
-    var title='GAME OVER', sub='', record=false, puzzleLabel=puzzleName(puzzleIdx), puzzleAt=puzzleIdx;
+    var title=t('gameOver'), sub='', record=false, puzzleLabel=puzzleName(puzzleIdx), puzzleAt=puzzleIdx;
     if(kind==='complete'){
-      title='COMPLETE';
-      sub='TIME '+fmtTime(elapsed,true);
+      title=t('complete');
+      sub=t('subTime', fmtTime(elapsed,true));
       if(!best.sprint || elapsed<best.sprint){ best.sprint=Math.round(elapsed); record=true; }
       sfxLevel();
     } else if(mode==='puzzle'){
       if(kind==='solved'){
-        title='SOLVED!';
+        title=t('solvedTitle');
         if(solvedPuzzles.indexOf(puzzleIdx)===-1){
           solvedPuzzles.push(puzzleIdx);
           writeStore('pocket-tetris-puzzles', JSON.stringify(solvedPuzzles));
         }
         var hasNext = puzzleIdx+1 < PUZZLES.length;
-        sub='PUZZLE '+puzzleLabel+(hasNext ? '\nSTART: NEXT PUZZLE' : '\nALL PUZZLES SOLVED!');
+        sub=t('subPuzzle', puzzleLabel)+'\n'+(hasNext ? t('nextPuzzle') : t('allSolved'));
         if(hasNext){ puzzleIdx++; writeStore('pocket-tetris-puzzle', String(puzzleIdx)); }
         sfxLevel();
       } else {
-        title = kind==='nopieces' ? 'OUT OF PIECES' : 'GAME OVER';
-        sub='START: TRY AGAIN';
+        title = kind==='nopieces' ? t('outOfPieces') : t('gameOver');
+        sub=t('tryAgain');
         sfxGameOver();
       }
     } else if(onTheClock()){
       // In timed games the score counts even after a top-out: survival is part of the challenge, not a reason to lose everything.
-      if(kind==='timeup') title = mode==='daily' ? 'DAILY '+dayLabel() : 'TIME UP';
-      sub='SCORE '+score;
+      if(kind==='timeup') title = mode==='daily' ? t('dailyTitle', dayLabel()) : t('timeUp');
+      sub=t('subScore', score);
       var rid=recordId();
       if(score>best[rid]){ best[rid]=score; record=true; }
       // The best game of the day (or the first one) is kept as a recording for the daily top.
@@ -648,7 +850,7 @@
     renderMenu();
     draw();
     powerLed.style.opacity='.35';
-    var recordText = mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
+    var recordText = mode==='daily' ? t('bestToday') : t('newRecord');
     showOverlay(title, (record ? recordText + (sub ? '\n' : '') : '') + sub, '', 'main');
   }
 
@@ -656,14 +858,11 @@
   var lastResult=null;
   function fmtScore(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
   function shareText(r){
-    if(r.mode==='sprint') return r.kind==='complete'
-      ? 'Pocket Tetris: собрал 40 линий за '+fmtTime(r.elapsed,true)+'! Сможешь быстрее?'
-      : 'Pocket Tetris: собрал '+r.lines+' из 40 линий. Попробуй пройти все!';
-    if(r.mode==='puzzle') return 'Pocket Tetris: решил головоломку '+r.puzzle+'! Сможешь очистить поле?';
-    if(r.mode==='daily') return 'Pocket Tetris, испытание дня '+r.day+': '+fmtScore(r.score)+' очков!'+
-      (r.rank ? ' Я на '+r.rank+'-м месте из '+r.players+'.' : '')+' Сегодня у всех одинаковые фигуры — сможешь больше?';
-    if(r.mode==='ultra') return 'Pocket Tetris, '+r.minutes+' минут: '+fmtScore(r.score)+' очков! Сможешь больше?';
-    return 'Pocket Tetris, марафон: '+fmtScore(r.score)+' очков и '+r.lines+' линий! Сможешь больше?';
+    if(r.mode==='sprint') return r.kind==='complete' ? t('shareSprintDone', fmtTime(r.elapsed,true)) : t('shareSprint', r.lines);
+    if(r.mode==='puzzle') return t('sharePuzzle', r.puzzle);
+    if(r.mode==='daily') return t('shareDaily', r.day, fmtScore(r.score), r.rank ? t('shareDailyRank', r.rank, r.players) : '');
+    if(r.mode==='ultra') return t('shareUltra', r.minutes, fmtScore(r.score));
+    return t('shareMarathon', fmtScore(r.score), r.lines);
   }
   function shareResult(){
     if(!lastResult) return;
@@ -675,9 +874,9 @@
     } else if(navigator.share){
       navigator.share({title:'Pocket Tetris', text:text, url:url}).catch(function(){});
     } else if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('COPIED',1200); }, function(){ showToast('CANNOT SHARE',1200); });
+      navigator.clipboard.writeText(text+' '+url).then(function(){ showToast(t('copied'),1200); }, function(){ showToast(t('cannotShare'),1200); });
     } else {
-      showToast('CANNOT SHARE',1200);
+      showToast(t('cannotShare'),1200);
     }
   }
   shareBtn.addEventListener('click', shareResult);
@@ -690,17 +889,17 @@
   function cardContent(r){
     var head, rows, badge='';
     if(r.mode==='sprint'){
-      head='40 LINES';
-      rows = r.kind==='complete' ? [['TIME',fmtTime(r.elapsed,true)],['LINES','40']] : [['LINES',r.lines+'/40'],['TIME',fmtTime(r.elapsed,true)]];
+      head=t('cardSprint');
+      rows = r.kind==='complete' ? [[t('cardTime'),fmtTime(r.elapsed,true)],[t('cardLines'),'40']] : [[t('cardLines'),r.lines+'/40'],[t('cardTime'),fmtTime(r.elapsed,true)]];
     } else if(r.mode==='puzzle'){
-      head='PUZZLE '+r.puzzle;
-      rows=[['RESULT','SOLVED!'],['PIECES',r.pieces]];
+      head=t('cardPuzzle', r.puzzle);
+      rows=[[t('cardResult'),t('cardSolved')],[t('cardPieces'),r.pieces]];
     } else {
-      head = r.mode==='daily' ? 'DAILY '+r.day : r.mode==='ultra' ? 'TIME ATTACK '+r.minutes+' MIN' : 'MARATHON';
-      rows=[['SCORE',fmtScore(r.score)],['LINES',String(r.lines)],['LEVEL',String(r.level)]];
-      if(r.rank) rows.push(['PLACE',r.rank+' OF '+r.players]);
+      head = r.mode==='daily' ? t('cardDaily', r.day) : r.mode==='ultra' ? t('cardUltra', r.minutes) : t('cardMarathon');
+      rows=[[t('cardScore'),fmtScore(r.score)],[t('cardLines'),String(r.lines)],[t('cardLevel'),String(r.level)]];
+      if(r.rank) rows.push([t('cardPlace'),t('cardOf', r.rank, r.players)]);
     }
-    if(r.record && r.mode!=='puzzle') badge = r.mode==='daily' ? 'BEST TODAY' : 'NEW RECORD';
+    if(r.record && r.mode!=='puzzle') badge = r.mode==='daily' ? t('bestToday') : t('newRecord');
     return {head:head, rows:rows, badge:badge};
   }
   function roundRectPath(g,x,y,w,h,rad){
@@ -767,7 +966,7 @@
     if(typeof File!=='function' || !HTMLCanvasElement.prototype.toBlob) return;
     var go=function(){ drawShareCard(r,serial); };
     // The pixel font must be loaded before the canvas can draw with it.
-    if(document.fonts && document.fonts.load) document.fonts.load("16px 'Press Start 2P'").then(go,go);
+    if(document.fonts && document.fonts.load) document.fonts.load("16px 'Press Start 2P'", 'AЖ').then(go,go);
     else go();
   }
 
@@ -814,7 +1013,7 @@
       if(!res || lastResult!==r || gameState!=='gameover') return;
       r.rank=res.rank; r.players=res.players;
       renderShareCard(r);
-      var line='PLACE '+res.rank+' OF '+res.players;
+      var line=t('place', res.rank, res.players);
       mainOverlay[1]=(mainOverlay[1] ? mainOverlay[1]+'\n' : '')+line;
       if(!overlay.hidden && !menuEl.hidden) overlaySub.textContent=mainOverlay[1];
     }, function(){});
@@ -827,7 +1026,7 @@
     topList.appendChild(el);
   }
   function renderTop(){
-    overlayTitle.textContent='DAILY '+dayLabel();
+    overlayTitle.textContent=t('topTitle', dayLabel());
     overlaySub.textContent=''; overlayStats.textContent='';
     menuEl.hidden=true; pauseMenuEl.hidden=true; overlayPrompt.hidden=true; shareRow.hidden=true; battlePanel.hidden=true;
     topPanel.hidden=false;
@@ -837,34 +1036,33 @@
     nameInput.hidden=!typing;
     nameInput.classList.toggle('codein', topView==='code');
     nameInput.maxLength = topView==='code' ? 19 : 10;
-    nameInput.setAttribute('aria-label', topView==='code' ? 'Код восстановления' : 'Имя в таблице рекордов');
+    nameInput.setAttribute('aria-label', topView==='code' ? t('ariaCode') : t('ariaName'));
     topMain.hidden = topView==='loading';
     topAlt.hidden = !(topView==='list' || topView==='name');
-    topBack.textContent = topView==='loading' ? 'CANCEL' : 'BACK';
+    topBack.textContent = topView==='loading' ? t('cancel') : t('back');
     var text;
     if(topView==='loading'){
-      text='ЗАГРУЖАЕМ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ';
+      text=t('tLoading');
     } else if(topView==='error'){
-      text='НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ';
-      topMain.textContent='RETRY';
+      text=t('tNoServer');
+      topMain.textContent=t('retry');
     } else if(topView==='name'){
-      text='ИМЯ ДЛЯ ТАБЛИЦЫ РЕКОРДОВ\nДО 10 БУКВ И ЦИФР';
-      topMain.textContent='SAVE';
-      topAlt.textContent='I HAVE A CODE';
+      text=t('tAskName');
+      topMain.textContent=t('save');
+      topAlt.textContent=t('haveCode');
     } else if(topView==='code'){
-      text='КОД ВОССТАНОВЛЕНИЯ\nСО СТАРОГО ТЕЛЕФОНА';
-      topMain.textContent='RESTORE';
+      text=t('tAskCode');
+      topMain.textContent=t('restore');
     } else if(topView==='profile'){
-      text='ИМЯ: '+playerName+'\n\nКОД ВОССТАНОВЛЕНИЯ:\n'+fmtCode(playerId)+'\n\nЗАПИШИ ЕГО: С НИМ ИМЯ\nВЕРНЁТСЯ НА ДРУГОМ ТЕЛЕФОНЕ.\nНИКОМУ ЕГО НЕ ПОКАЗЫВАЙ';
-      topMain.textContent='CHANGE NAME';
+      text=t('tProfile', playerName, fmtCode(playerId));
+      topMain.textContent=t('changeName');
     } else {
       var d=topData;
-      text = !d.players ? 'СЕГОДНЯ ЕЩЁ НИКТО НЕ ИГРАЛ.\nБУДЬ ПЕРВЫМ!'
-        : 'ИГРОКОВ СЕГОДНЯ: '+d.players+(d.me ? '' : '\nСЫГРАЙ, ЧТОБЫ ПОПАСТЬ В СПИСОК');
+      text = !d.players ? t('tNobody') : t('tPlayers', d.players)+(d.me ? '' : '\n'+t('tPlayToJoin'));
       d.top.forEach(function(e,i){ topRow(i+1, e.name, e.score, e.me); });
       if(d.me && d.me.rank>d.top.length){ topRow(0,'   ...','',false); topRow(d.me.rank, playerName, d.me.score, true); }
-      topMain.textContent='PLAY';
-      topAlt.textContent='MY NAME';
+      topMain.textContent=t('play');
+      topAlt.textContent=t('myName');
     }
     topText.textContent = topNote ? topNote+'\n\n'+text : text;
   }
@@ -902,7 +1100,7 @@
     // Today's best game goes up first, so one played before picking a name (or offline) still counts.
     submitDaily(day).catch(function(status){
       if(status===409) note='taken';
-      else if(status===426) note='ОБНОВИ СТРАНИЦУ, ЧТОБЫ\nРЕЗУЛЬТАТ ПОПАЛ В СПИСОК';
+      else if(status===426) note=t('tUpdate');
     }).then(function(){
       return playerPub || refreshPub();
     }).then(function(pub){
@@ -915,7 +1113,7 @@
         var lost=playerName;
         playerName='';
         removeStore('pocket-tetris-name');
-        askName('ИМЯ '+lost+' УЖЕ ЗАНЯТО,\nВЫБЕРИ ДРУГОЕ');
+        askName(t('tNameLost', lost));
         return;
       }
       showTopView('list', note);
@@ -926,7 +1124,7 @@
   }
   function saveName(){
     var n=nameInput.value.trim().replace(/\s+/g,' ').toUpperCase();
-    if(!NAME_RE.test(n)){ topText.textContent='ТОЛЬКО БУКВЫ И ЦИФРЫ,\nДО 10 ЗНАКОВ'; return; }
+    if(!NAME_RE.test(n)){ topText.textContent=t('tBadName'); return; }
     nameInput.blur();
     var serial=++topSerial;
     showTopView('loading');
@@ -937,14 +1135,14 @@
       loadTop();
     }, function(status){
       if(serial!==topSerial) return;
-      if(status===409) askName('ИМЯ '+n+' УЖЕ ЗАНЯТО');
+      if(status===409) askName(t('tNameTaken', n));
       else showTopError(function(){ askName(); });
     });
   }
   // A recovery code makes this phone the player from the old one: same id, same name.
   function restoreCode(){
     var c=nameInput.value.replace(/\s+/g,'').toLowerCase();
-    if(!CODE_RE.test(c)){ topText.textContent='В КОДЕ 16 ЗНАКОВ:\nЦИФРЫ И БУКВЫ A-F'; return; }
+    if(!CODE_RE.test(c)){ topText.textContent=t('tBadCode'); return; }
     nameInput.blur();
     var serial=++topSerial;
     showTopView('loading');
@@ -959,7 +1157,7 @@
       refreshPub().then(loadTop);
     }, function(status){
       if(serial!==topSerial) return;
-      if(status===404) askCode('ТАКОЙ КОД НЕ НАЙДЕН');
+      if(status===404) askCode(t('tNoCode'));
       else showTopError(function(){ askCode(); });
     });
   }
@@ -1011,7 +1209,7 @@
   // Two friends play the same pieces (the server hands both the same seed). Clearing 2+ lines sends
   // garbage rows to the rival; whoever tops out first loses. The server only relays messages.
   var SERVER_URL = location.hostname==='127.0.0.1' ? 'http://127.0.0.1:8094' : 'https://pocket-tetris-battle.onrender.com';
-  var BATTLE_OPTIONS=['NEW ROOM','JOIN ROOM'];
+  var BATTLE_OPTIONS=['roomNew','roomJoin'];
   // Time can't stop in a match: garbage only rises when a piece locks, so a paused player could never lose.
   // A pause resumes by itself, a player who leaves the app for too long loses, and a rival who goes
   // silent (no board updates, which are also sent as a heartbeat) loses too.
@@ -1069,60 +1267,60 @@
     battleBack.hidden=!back; battleBack.textContent=back||'';
     roomInput.hidden=!withInput;
     overlay.hidden=false;
-    setStartLabel('START','Старт');
+    setStartLabel(t('pillStart'), t('ariaStart'));
   }
 
   function renderLobby(){
     if(battle.stage==='over'){
-      var head=(battle.reason ? battle.reason+'\n' : '');
-      if(battle.players<2) showBattle(battle.title, head+'ДРУГ ВЫШЕЛ ИЗ КОМНАТЫ', 'INVITE FRIEND', 'LEAVE');
-      else if(battle.meReady) showBattle(battle.title, head+'ЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ REMATCH', null, 'LEAVE');
-      else showBattle(battle.title, head+(battle.peerReady ? 'ДРУГ ХОЧЕТ РЕВАНШ!' : 'СЫГРАЕМ ЕЩЁ?'), 'REMATCH', 'LEAVE');
+      var head=(battle.reason ? t(battle.reason)+'\n' : ''), title=t(battle.title);
+      if(battle.players<2) showBattle(title, head+t('bFriendLeftRoom'), t('inviteFriend'), t('leave'));
+      else if(battle.meReady) showBattle(title, head+t('bWaitRematch'), null, t('leave'));
+      else showBattle(title, head+(battle.peerReady ? t('bWantsRematch') : t('bAgain')), t('rematch'), t('leave'));
       return;
     }
-    var title='ROOM '+battle.code;
-    if(battle.players<2) showBattle(title, 'ЖДЁМ ДРУГА...\nОТПРАВЬ ЕМУ ПРИГЛАШЕНИЕ\nИЛИ КОД '+battle.code, 'INVITE FRIEND', 'LEAVE');
-    else if(battle.meReady) showBattle(title, 'ТЫ ГОТОВ!\nЖДЁМ, КОГДА ДРУГ\nНАЖМЁТ READY', null, 'LEAVE');
-    else showBattle(title, (battle.peerReady ? 'ДРУГ ГОТОВ!' : 'ДРУГ В КОМНАТЕ!')+'\nНАЖМИ READY, КОГДА ГОТОВ', 'READY', 'LEAVE');
+    var title=t('roomTitle', battle.code);
+    if(battle.players<2) showBattle(title, t('bWaitFriend', battle.code), t('inviteFriend'), t('leave'));
+    else if(battle.meReady) showBattle(title, t('bYouReady'), null, t('leave'));
+    else showBattle(title, (battle.peerReady ? t('bFriendReady') : t('bFriendHere'))+'\n'+t('bPressReady'), t('ready'), t('leave'));
   }
 
   function battleError(text){
     battleLeave(false);
     battle.stage='code';
-    showBattle('BATTLE', text, null, 'BACK');
+    showBattle(t('battleTitle'), text, null, t('back'));
   }
 
   function battleCreate(){
     battle.stage='connecting';
-    showBattle('BATTLE','ПОДКЛЮЧАЕМСЯ К СЕРВЕРУ...\nПЕРВЫЙ РАЗ ЗА ДЕНЬ\nЭТО ЗАЙМЁТ ДО МИНУТЫ', null, 'CANCEL');
+    showBattle(t('battleTitle'), t('bConnecting'), null, t('cancel'));
     api('/rooms',{method:'POST'}).then(function(r){
       if(battle.stage==='connecting') openRoom(r.code);
     }).catch(function(status){
       if(battle.stage!=='connecting') return;
-      battleError(status===429 ? 'СЛИШКОМ МНОГО КОМНАТ.\nПОДОЖДИ НЕСКОЛЬКО МИНУТ' : 'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
+      battleError(status===429 ? t('bTooMany') : t('bNoServer'));
     });
   }
 
   function battleJoinPrompt(){
     battle.stage='code';
-    showBattle('JOIN ROOM','ВВЕДИ КОД КОМНАТЫ\nИЗ 4 ЦИФР','JOIN','BACK',true);
+    showBattle(t('joinTitle'), t('bEnterCode'), t('join'), t('back'), true);
     roomInput.value='';
     setTimeout(function(){ roomInput.focus(); },50);
   }
 
   function battleJoin(code){
     code=String(code||'').replace(/\D/g,'');
-    if(code.length!==4){ battleText.textContent='НУЖНО 4 ЦИФРЫ'; return; }
+    if(code.length!==4){ battleText.textContent=t('bNeed4'); return; }
     roomInput.blur();
     battle.stage='connecting';
-    showBattle('ROOM '+code,'ПОДКЛЮЧАЕМСЯ...\nЭТО ЗАЙМЁТ ДО МИНУТЫ', null, 'CANCEL');
+    showBattle(t('roomTitle', code), t('bJoining'), null, t('cancel'));
     api('/rooms/'+code).then(function(r){
       if(battle.stage!=='connecting') return;
-      if(r.players>=2) battleError('КОМНАТА '+code+'\nУЖЕ ЗАНЯТА');
+      if(r.players>=2) battleError(t('bRoomTaken', code));
       else openRoom(code);
     }).catch(function(status){
       if(battle.stage!=='connecting') return;
-      battleError(status===404 ? 'КОМНАТА '+code+'\nНЕ НАЙДЕНА' : 'НЕ УДАЛОСЬ СВЯЗАТЬСЯ\nС СЕРВЕРОМ. ПРОВЕРЬ ИНТЕРНЕТ');
+      battleError(status===404 ? t('bRoomMissing', code) : t('bNoServer'));
     });
   }
 
@@ -1139,7 +1337,7 @@
       var d=data(e);
       battle.players=d.players;
       battle.peerReady=false;
-      if(d.left && battleRunning()){ battleResult(true,'ДРУГ ВЫШЕЛ ИЗ ИГРЫ'); return; }
+      if(d.left && battleRunning()){ battleResult(true,'bFriendQuit'); return; }
       if(d.left) battle.meReady=false;
       if(battle.stage==='lobby' || battle.stage==='over') renderLobby();
     });
@@ -1152,8 +1350,8 @@
     es.onerror=function(){
       // EventSource reconnects by itself; it only gives up (CLOSED) when the server refuses the room.
       if(es.readyState===2 && battle.es===es){
-        if(battleRunning()) battleResult(false,'СВЯЗЬ ПОТЕРЯНА');
-        else battleError('СВЯЗЬ С КОМНАТОЙ\nПОТЕРЯНА');
+        if(battleRunning()) battleResult(false,'bConnLost');
+        else battleError(t('bRoomLost'));
       }
     };
   }
@@ -1167,9 +1365,9 @@
 
   function inviteFriend(){
     var url=location.origin+'/?room='+battle.code;
-    var text='Сыграем в Pocket Tetris один на один? Комната '+battle.code+':';
+    var text=t('invite', battle.code);
     if(navigator.share) navigator.share({title:'Pocket Tetris', text:text, url:url}).catch(function(){});
-    else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text+' '+url).then(function(){ showToast('LINK COPIED',1200); }, function(){});
+    else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text+' '+url).then(function(){ showToast(t('linkCopied'),1200); }, function(){});
   }
 
   function battleLeave(sendLost){
@@ -1215,7 +1413,7 @@
       n--;
       if(n>0){ showToast(String(n),700); sfxMove(); return; }
       clearInterval(timer);
-      showToast('GO!',600);
+      showToast(t('go'),600);
       battle.stage='match';
       battle.pending=0;
       battle.heardAt=performance.now();
@@ -1229,14 +1427,14 @@
     if(battle.stage!=='match' || !battleRunning()) return;
     if(gameState==='paused'){
       var left=BATTLE_PAUSE_MS-(now-battle.pausedAt);
-      if(left<=0){ togglePause(); showToast('GO!',600); }
-      else overlaySub.textContent='ИГРА ПРОДОЛЖИТСЯ\nЧЕРЕЗ '+Math.ceil(left/1000);
+      if(left<=0){ togglePause(); showToast(t('go'),600); }
+      else overlaySub.textContent=t('bResumeIn', Math.ceil(left/1000));
     }
     if(now-battle.sentAt>=BATTLE_HEARTBEAT_MS) sendBoard();
     if(now-battle.heardAt>=BATTLE_SILENCE_MS){
       // Tell the rival too: if only their sending broke, they would otherwise wait for us and win by silence as well.
       sendMsg('won');
-      battleResult(true,'СОПЕРНИК ПРОПАЛ');
+      battleResult(true,'bRivalGone');
     }
   }
 
@@ -1247,7 +1445,7 @@
     var away = battle.hiddenAt ? now-battle.hiddenAt : 0;
     battle.hiddenAt=0;
     if(battle.stage!=='match') return;
-    if(away>=BATTLE_AWAY_MS){ battleResult(false,'ТЫ ДОЛГО БЫЛ\nВНЕ ИГРЫ'); return; }
+    if(away>=BATTLE_AWAY_MS){ battleResult(false,'bAway'); return; }
     // While the app was in the background the rival's messages may not have arrived, so don't count that as silence;
     // and the pause restarts, so the player gets a moment to look at the board again.
     battle.heardAt=now;
@@ -1257,9 +1455,9 @@
   function onBattleMsg(type,data){
     battle.heardAt=performance.now();
     if(type==='board'){ rivalBoard=data; drawRival(); }
-    else if(type==='attack' && battleRunning() && game){ game.garbage(data); afterEngine(); showToast('INCOMING '+data,700); }
-    else if(type==='lost' && battleRunning()){ battleResult(true,'СОПЕРНИК ПРОИГРАЛ'); }
-    else if(type==='won' && battleRunning()){ battleResult(false,'ТВОЯ СВЯЗЬ ПРОПАЛА'); }
+    else if(type==='attack' && battleRunning() && game){ game.garbage(data); afterEngine(); showToast(t('incoming', data),700); }
+    else if(type==='lost' && battleRunning()){ battleResult(true,'bRivalLost'); }
+    else if(type==='won' && battleRunning()){ battleResult(false,'bYourConn'); }
   }
 
   function battleResult(won,reason){
@@ -1275,9 +1473,10 @@
       gesture=null;
       pauseRow=0;
       restartBtn.hidden = mode==='battle';
+      hintBtn.hidden = !hintAvailable();
       battle.pausedAt=performance.now();
       renderPauseMenu();
-      showOverlay('PAUSE','',statsLine(),'pause');
+      showOverlay(t('pause'),'',statsLine(),'pause');
     } else if(gameState==='paused'){
       gameState='playing';
       hideOverlay();
@@ -1287,10 +1486,10 @@
 
   /* ---------------- pause menu: continue or quit ---------------- */
   var pauseRow=0;
+  function pauseItems(){ return [resumeBtn, hintBtn, restartBtn, quitBtn].filter(function(b){ return !b.hidden; }); }
   function renderPauseMenu(){
-    resumeBtn.classList.toggle('focus', pauseRow===0);
-    restartBtn.classList.toggle('focus', pauseRow===1);
-    quitBtn.classList.toggle('focus', pauseRow===2);
+    var items=pauseItems();
+    [resumeBtn, hintBtn, restartBtn, quitBtn].forEach(function(b){ b.classList.toggle('focus', items.indexOf(b)===pauseRow); });
   }
 
   function quitToMenu(){
@@ -1314,10 +1513,9 @@
   function pauseInput(cmd){
     if(!cmd) return;
     if(cmd==='resume'){ togglePause(); return; }
-    if(cmd==='go'){ [togglePause, restartGame, quitToMenu][pauseRow](); return; }
-    var items = restartBtn.hidden ? [0,2] : [0,1,2];
-    var at = Math.max(0, items.indexOf(pauseRow));
-    pauseRow = items[Math.max(0, Math.min(items.length-1, at + (cmd==='up' ? -1 : 1)))];
+    var items=pauseItems();
+    if(cmd==='go'){ items[Math.min(pauseRow, items.length-1)].click(); return; }
+    pauseRow = Math.max(0, Math.min(items.length-1, pauseRow + (cmd==='up' ? -1 : 1)));
     sfxMove();
     renderPauseMenu();
   }
@@ -1325,34 +1523,36 @@
   resumeBtn.addEventListener('click', function(){ if(gameState==='paused') togglePause(); });
   restartBtn.addEventListener('click', restartGame);
   quitBtn.addEventListener('click', quitToMenu);
+  hintBtn.addEventListener('click', function(){ if(gameState==='paused') useHint(); });
+  hintRetryBtn.addEventListener('click', function(){ if(inMenu() && performance.now()>=menuLockUntil) useHint(); });
 
   /* ---------------- menu: mode and start level ---------------- */
   function renderMenu(){
     var m=MODES[modeIdx];
     refreshDaily();
-    modeValEl.textContent=m.name;
-    modeHintEl.textContent = m.id==='daily' ? dayLabel()+' - У ВСЕХ ОДИНАКОВЫЕ ФИГУРЫ' : m.hint;
+    modeValEl.textContent=t('mode.'+m.id);
+    modeHintEl.textContent = m.id==='daily' ? t('hint.daily', dayLabel()) : t('hint.'+m.id);
     // The second row is the start level in MARATHON, the game length in TIME ATTACK and the level in PUZZLES.
     var hasOption = m.id==='marathon' || m.id==='ultra' || m.id==='puzzle' || m.id==='battle';
     if(m.id==='ultra'){
-      levelSelEl.textContent=DURATIONS[durIdx]+' MINUTES';
-      optCapEl.textContent='ДЛИТЕЛЬНОСТЬ';
+      levelSelEl.textContent=t('selMinutes', DURATIONS[durIdx]);
+      optCapEl.textContent=t('capLength');
     } else if(m.id==='battle'){
-      levelSelEl.textContent=BATTLE_OPTIONS[battleOpt];
-      optCapEl.textContent='КОМНАТА';
+      levelSelEl.textContent=t(BATTLE_OPTIONS[battleOpt]);
+      optCapEl.textContent=t('capRoom');
     } else if(m.id==='puzzle'){
-      levelSelEl.textContent='PUZZLE '+puzzleName(puzzleIdx);
-      optCapEl.textContent='УРОВЕНЬ - РЕШЕНО '+solvedPuzzles.length+' ИЗ '+PUZZLES.length;
+      levelSelEl.textContent=t('selPuzzle', puzzleName(puzzleIdx));
+      optCapEl.textContent=t('capPuzzle', solvedPuzzles.length, PUZZLES.length);
     } else {
-      levelSelEl.textContent='LEVEL '+startLevel;
-      optCapEl.textContent='СТАРТОВЫЙ УРОВЕНЬ';
+      levelSelEl.textContent=t('selLevel', startLevel);
+      optCapEl.textContent=t('capStart');
     }
     if(!hasOption && menuRow===1) menuRow=0;
     menuRows[1].hidden=!hasOption;
     optCapEl.hidden=!hasOption;
     var sk=SKINS[skinIdx], open=isUnlocked(sk.id);
-    colorValEl.textContent=sk.name;
-    colorHintEl.textContent = open ? 'ОТКРЫТО '+unlockedSkins.length+' ИЗ '+SKINS.length : sk.how;
+    colorValEl.textContent=t('skin.'+sk.id);
+    colorHintEl.textContent = open ? t('unlocked', unlockedSkins.length, SKINS.length) : t('how.'+sk.id);
     menuRows[2].classList.toggle('locked', !open);
     for(var i=0;i<menuRows.length;i++) menuRows[i].classList.toggle('focus', menuRow===i);
     renderShareRow();
@@ -1651,6 +1851,11 @@
   }catch(e){}
   puzzleIdx=Math.min(PUZZLES.length-1, Math.max(0, parseInt(readStore('pocket-tetris-puzzle')||'0',10)||0));
   if(!puzzleUnlocked(puzzleIdx)) puzzleIdx=0;
+  try{
+    var savedHints=JSON.parse(readStore('pocket-tetris-hints')||'[]');
+    if(Array.isArray(savedHints)) usedHints=savedHints.filter(function(i){ return i===(i|0) && i>=0 && i<PUZZLES.length; });
+  }catch(e){}
+  applyLang();
   if(!PUZZLES.length && MODES[modeIdx].id==='puzzle') modeIdx=0;
   mode=MODES[modeIdx].id;
   level=baseLevel();

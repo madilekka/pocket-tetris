@@ -28,28 +28,29 @@
         <div class="led" id="powerLed"></div>
         <div class="name">POCKET&nbsp;SYSTEM</div>
         <div class="wordmark">TETRIS</div>
-        <button type="button" class="mute" id="muteBtn" aria-label="Звук" aria-pressed="false" title="Звук">&#9834;</button>
+        <button type="button" class="mute" id="langBtn" data-ta="ariaLang" aria-label="Язык">RU</button>
+        <button type="button" class="mute" id="muteBtn" data-ta="ariaSound" aria-label="Звук" aria-pressed="false">&#9834;</button>
       </div>
 
       <div class="bezel">
         <div class="screen" id="screen">
           <div class="linesbar">
-            <span>LINES <span id="linesVal">000</span></span>
+            <span><span data-t="lines">LINES</span> <span id="linesVal">000</span></span>
             <span class="lvwrap" id="lvWrap"><span class="lvbar" id="lvBar"></span><span id="lvLeft">10</span></span>
             <span id="goalText" hidden>CLEAR ALL</span>
           </div>
           <canvas id="board" width="160" height="320"></canvas>
           <div class="sidebar">
             <div class="panel">
-              <div class="label">HOLD</div>
+              <div class="label" data-t="lblHold">HOLD</div>
               <canvas id="hold" class="mini" width="46" height="46"></canvas>
             </div>
             <div class="panel">
-              <div class="label">NEXT</div>
+              <div class="label" data-t="lblNext">NEXT</div>
               <canvas id="next" class="mini" width="46" height="46"></canvas>
             </div>
             <div class="panel" id="rivalPanel" hidden>
-              <div class="label">RIVAL</div>
+              <div class="label" data-t="lblRival">RIVAL</div>
               <canvas id="rival" class="rivalcv" width="80" height="160"></canvas>
             </div>
             <div class="panel">
@@ -75,39 +76,41 @@
             <div class="big" id="overlayTitle">TETRIS</div>
             <div class="small" id="overlaySub"></div>
             <div class="menu" id="shareRow" hidden>
-              <button type="button" class="mrow mitem share" id="shareBtn">SHARE RESULT</button>
-              <button type="button" class="mrow mitem share" id="topBtn">DAILY TOP</button>
+              <button type="button" class="mrow mitem share" id="shareBtn" data-t="shareResult">SHARE RESULT</button>
+              <button type="button" class="mrow mitem share" id="topBtn" data-t="dailyTop">DAILY TOP</button>
+              <button type="button" class="mrow mitem share" id="hintRetryBtn" data-t="hint" hidden>HINT</button>
             </div>
             <div class="menu" id="menu">
-              <div class="mcap">РЕЖИМ</div>
+              <div class="mcap" data-t="capMode">РЕЖИМ</div>
               <div class="mrow" id="rowMode">
-                <button type="button" class="mbtn" data-row="0" data-dir="-1" aria-label="Предыдущий режим">&lt;</button>
+                <button type="button" class="mbtn" data-row="0" data-dir="-1" data-ta="ariaPrevMode" aria-label="Предыдущий режим">&lt;</button>
                 <span class="mval" id="modeVal">MARATHON</span>
-                <button type="button" class="mbtn" data-row="0" data-dir="1" aria-label="Следующий режим">&gt;</button>
+                <button type="button" class="mbtn" data-row="0" data-dir="1" data-ta="ariaNextMode" aria-label="Следующий режим">&gt;</button>
               </div>
               <div class="mhint" id="modeHint"></div>
               <div class="mcap" id="optCap">СТАРТОВЫЙ УРОВЕНЬ</div>
               <div class="mrow" id="rowLevel">
-                <button type="button" class="mbtn" data-row="1" data-dir="-1" aria-label="Меньше">&lt;</button>
+                <button type="button" class="mbtn" data-row="1" data-dir="-1" data-ta="ariaLess" aria-label="Меньше">&lt;</button>
                 <span class="mval" id="levelSel">LEVEL 0</span>
-                <button type="button" class="mbtn" data-row="1" data-dir="1" aria-label="Больше">&gt;</button>
+                <button type="button" class="mbtn" data-row="1" data-dir="1" data-ta="ariaMore" aria-label="Больше">&gt;</button>
               </div>
-              <div class="mcap">ЦВЕТ КОНСОЛИ</div>
+              <div class="mcap" data-t="capColor">ЦВЕТ КОНСОЛИ</div>
               <div class="mrow" id="rowColor">
-                <button type="button" class="mbtn" data-row="2" data-dir="-1" aria-label="Предыдущий цвет консоли">&lt;</button>
+                <button type="button" class="mbtn" data-row="2" data-dir="-1" data-ta="ariaPrevColor" aria-label="Предыдущий цвет консоли">&lt;</button>
                 <span class="mval"><span id="colorVal">CLASSIC</span><i class="lock" aria-hidden="true"></i></span>
-                <button type="button" class="mbtn" data-row="2" data-dir="1" aria-label="Следующий цвет консоли">&gt;</button>
+                <button type="button" class="mbtn" data-row="2" data-dir="1" data-ta="ariaNextColor" aria-label="Следующий цвет консоли">&gt;</button>
               </div>
               <div class="mhint" id="colorHint"></div>
             </div>
             <div class="menu" id="pauseMenu" hidden>
-              <button type="button" class="mrow mitem" id="resumeBtn">CONTINUE</button>
-              <button type="button" class="mrow mitem" id="restartBtn">RESTART</button>
-              <button type="button" class="mrow mitem" id="quitBtn">QUIT TO MENU</button>
+              <button type="button" class="mrow mitem" id="resumeBtn" data-t="continue">CONTINUE</button>
+              <button type="button" class="mrow mitem" id="hintBtn" data-t="hint" hidden>HINT</button>
+              <button type="button" class="mrow mitem" id="restartBtn" data-t="restart">RESTART</button>
+              <button type="button" class="mrow mitem" id="quitBtn" data-t="quit">QUIT TO MENU</button>
             </div>
             <div class="menu" id="battlePanel" hidden>
               <div class="small" id="battleText"></div>
-              <input type="text" id="roomInput" class="roomin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Код комнаты" hidden>
+              <input type="text" id="roomInput" class="roomin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" data-ta="ariaRoom" aria-label="Код комнаты" hidden>
               <button type="button" class="mrow mitem share" id="battleMain">INVITE FRIEND</button>
               <button type="button" class="mrow mitem" id="battleBack">LEAVE</button>
             </div>
@@ -119,7 +122,7 @@
               <button type="button" class="mrow mitem" id="topAlt">MY NAME</button>
               <button type="button" class="mrow mitem" id="topBack">BACK</button>
             </div>
-            <div class="small blink" id="overlayPrompt">PRESS START</div>
+            <div class="small blink" id="overlayPrompt" data-t="pressStart">PRESS START</div>
             <div class="stats" id="overlayStats"></div>
           </div>
         </div>
@@ -128,25 +131,25 @@
       <div class="controls">
         <div class="dpad">
           <div class="h"></div><div class="v"></div>
-          <button type="button" class="left" data-action="left" aria-label="Влево"><span>&#9664;&#xFE0E;</span></button>
-          <button type="button" class="right" data-action="right" aria-label="Вправо"><span>&#9654;&#xFE0E;</span></button>
-          <button type="button" class="up" data-action="drop" aria-label="Сбросить вниз"><span>&#9650;</span></button>
-          <button type="button" class="down" data-action="soft" aria-label="Ускорить падение"><span>&#9660;</span></button>
+          <button type="button" class="left" data-action="left" data-ta="ariaLeft" aria-label="Влево"><span>&#9664;&#xFE0E;</span></button>
+          <button type="button" class="right" data-action="right" data-ta="ariaRight" aria-label="Вправо"><span>&#9654;&#xFE0E;</span></button>
+          <button type="button" class="up" data-action="drop" data-ta="ariaDrop" aria-label="Сбросить вниз"><span>&#9650;</span></button>
+          <button type="button" class="down" data-action="soft" data-ta="ariaSoft" aria-label="Опустить ниже"><span>&#9660;</span></button>
         </div>
         <div class="abgroup">
-          <button type="button" class="b" data-action="ccw" aria-label="Повернуть против часовой">B</button>
-          <button type="button" class="a" data-action="cw" aria-label="Повернуть по часовой">A</button>
+          <button type="button" class="b" data-action="ccw" data-ta="ariaCcw" aria-label="Повернуть против часовой">B</button>
+          <button type="button" class="a" data-action="cw" data-ta="ariaCw" aria-label="Повернуть по часовой">A</button>
         </div>
       </div>
       <div class="meta">
-        <button type="button" class="pill" data-action="hold" aria-label="Отложить фигуру"><span>HOLD</span></button>
+        <button type="button" class="pill" data-action="hold" data-ta="ariaHold" aria-label="Отложить фигуру"><span data-t="pillHold">HOLD</span></button>
         <button type="button" class="pill" id="startPill" data-action="start" aria-label="Старт"><span id="startLabel">START</span></button>
       </div>
     </div>
   </div>
 
   <div class="below" id="below">
-    <button type="button" class="install" id="installBtn" hidden>Установить как приложение</button>
+    <button type="button" class="install" id="installBtn" data-t="install" hidden>Установить как приложение</button>
     <p class="ios-hint" id="iosHint" hidden>Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b></p>
   </div>
 </main>

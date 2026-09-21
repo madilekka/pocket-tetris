@@ -197,13 +197,15 @@
     }
 
     function lock(){
+      var cells=[];
       for(var r=0;r<g.piece.length;r++){
         for(var c=0;c<g.piece[r].length;c++){
-          if(g.piece[r][c] && g.py+r>=0) g.board[g.py+r][g.px+c]=1;
+          if(g.piece[r][c] && g.py+r>=0){ g.board[g.py+r][g.px+c]=1; cells.push([g.px+c, g.py+r]); }
         }
       }
       g.gravityAcc=0;
-      emit({t:'lock'});
+      // Where the piece landed, for the puzzle hint to check the player followed it.
+      emit({t:'lock', cells:cells});
       var rows=[];
       for(var y=0;y<ROWS;y++){
         var full=true;
