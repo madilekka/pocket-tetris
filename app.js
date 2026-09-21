@@ -1435,7 +1435,7 @@
   function startRepeat(action,delay){
     stopRepeat(action);
     repeatTimers[action]=setTimeout(function rep(){
-      doAction(action);
+      doAction(action,true);
       repeatTimers[action]=setTimeout(rep,ARR);
     },delay);
   }
@@ -1451,15 +1451,25 @@
   var BUTTON_MENU={drop:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
   var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
   var BUTTON_BATTLE={cw:'go', start:'go', ccw:'back'};
-  function doAction(action){
+  // repeat: the action comes from holding a button or dragging, not from a fresh press.
+  var placeHintFor=-1;
+  function doAction(action,repeat){
     if(topOpen()){ topInput(BUTTON_BATTLE[action]); return; }
     if(battleUiOpen()){ battleInput(BUTTON_BATTLE[action]); return; }
     if(inMenu()){ menuInput(BUTTON_MENU[action]); return; }
     if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
     if(action==='start'){ togglePause(); return; }
     if(game && (gameState==='playing' || gameState==='clearing')){
+      // In puzzles a piece never locks by itself, and players expect DOWN on a piece that can't go lower to place it.
+      // Only a fresh press does that: holding DOWN just lowers the piece, so it can still be slid under a ledge.
+      var grounded = mode==='puzzle' && game.state==='playing' && game.ghostY()===game.py;
+      if(action==='soft' && !repeat && grounded) action='drop';
       game.act(action);
       afterEngine();
+      if(action==='soft' && mode==='puzzle' && game.state==='playing' && game.ghostY()===game.py && placeHintFor!==pieceSerial){
+        placeHintFor=pieceSerial;
+        showToast('PRESS DOWN AGAIN\nTO PLACE IT',1500);
+      }
       if(gameState==='playing' || gameState==='clearing') draw();
     }
   }
@@ -1581,7 +1591,7 @@
     var totX=Math.abs(e.clientX-g.x0), totY=e.clientY-g.y0;
     if(totY>0 && totY>totX*1.5){
       g.ax=e.clientX;
-      while(e.clientY-g.ay>=step){ g.ay+=step; g.moved=true; doAction('soft'); }
+      while(e.clientY-g.ay>=step){ g.ay+=step; g.moved=true; doAction('soft',true); }
     } else {
       g.ay=e.clientY;
       while(e.clientX-g.ax>=step){ g.ax+=step; g.moved=true; doAction('right'); }
