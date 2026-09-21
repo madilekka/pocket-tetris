@@ -97,7 +97,7 @@
       iosHint:'Установка на iPhone: нажми <b>•••</b> или значок «Поделиться» (квадрат со стрелкой вверх) &rarr; <b>На экран «Домой»</b>',
       ariaSound:'Звук', ariaLang:'Язык: русский. Нажми, чтобы переключить на английский', ariaPrevMode:'Предыдущий режим', ariaNextMode:'Следующий режим',
       ariaLess:'Меньше', ariaMore:'Больше', ariaPrevColor:'Предыдущий цвет консоли', ariaNextColor:'Следующий цвет консоли', ariaRoom:'Код комнаты',
-      ariaLeft:'Влево', ariaRight:'Вправо', ariaDrop:'Сбросить вниз', ariaSoft:'Опустить ниже', ariaCcw:'Повернуть против часовой', ariaCw:'Повернуть по часовой',
+      ariaLeft:'Влево', ariaRight:'Вправо', ariaUp:'Вверх по меню', ariaSoft:'Опустить ниже', ariaCcw:'Повернуть против часовой', ariaCw:'Повернуть по часовой',
       ariaHold:'Отложить фигуру в запас'
     },
     en:{
@@ -166,7 +166,7 @@
       iosHint:'To install on iPhone: tap <b>•••</b> or the Share icon (a square with an up arrow) &rarr; <b>Add to Home Screen</b>',
       ariaSound:'Sound', ariaLang:'Language: English. Tap to switch to Russian', ariaPrevMode:'Previous mode', ariaNextMode:'Next mode',
       ariaLess:'Less', ariaMore:'More', ariaPrevColor:'Previous console color', ariaNextColor:'Next console color', ariaRoom:'Room code',
-      ariaLeft:'Left', ariaRight:'Right', ariaDrop:'Drop', ariaSoft:'Move down', ariaCcw:'Rotate counterclockwise', ariaCw:'Rotate clockwise',
+      ariaLeft:'Left', ariaRight:'Right', ariaUp:'Up in menus', ariaSoft:'Move down', ariaCcw:'Rotate counterclockwise', ariaCw:'Rotate clockwise',
       ariaHold:'Hold the piece'
     }
   };
@@ -1925,8 +1925,10 @@
     keysDown={};
   }
 
-  var BUTTON_MENU={drop:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
-  var BUTTON_PAUSE={drop:'up', soft:'down', cw:'go', start:'resume'};
+  // The D-pad's up arrow only moves through menus: in a game a thumb brushing it used to drop the piece by accident.
+  // A hard drop is a quick swipe down on the screen (or Space on a keyboard).
+  var BUTTON_MENU={up:'up', soft:'down', left:'dec', right:'inc', cw:'go', start:'go'};
+  var BUTTON_PAUSE={up:'up', soft:'down', cw:'go', start:'resume'};
   var BUTTON_BATTLE={cw:'go', start:'go', ccw:'back'};
   // repeat: the action comes from holding a button or dragging, not from a fresh press.
   function doAction(action,repeat){
