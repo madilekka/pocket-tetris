@@ -247,6 +247,7 @@ function cleanProgress(d) {
 
 function memoryStore() {
   const days = new Map(), weeks = new Map(); // day or week -> Map(pub -> { name, value })
+  const weekParts = new Map(); // 'pub:day' -> how much of that day's best the week already holds
   const owners = new Map(), handles = new Map(); // name -> pub, pub -> name
   const challenges = new Map(), progress = new Map();
   const list = (boards, key) => [...(boards.get(key) || new Map()).entries()].sort((a, b) => b[1].value - a[1].value);
@@ -275,15 +276,18 @@ function memoryStore() {
       const players = days.get(day), had = players.get(pub), value = rankValue(score);
       if (!had && players.size >= MAX_PLAYERS_PER_DAY) return null;
       players.set(pub, { name, value: had && had.value >= value ? had.value : value });
-      // The week grows by however much this beat the player's earlier best of the day.
-      const gain = score - (had ? Math.floor(had.value) : 0), week = weekOf(day);
+      // The week holds the sum of each day's best: it takes whatever part of this day's best it doesn't have yet.
+      const week = weekOf(day), best = Math.floor(players.get(pub).value), key = pub + ':' + day;
+      const gain = best - (weekParts.get(key) || 0);
       if (gain > 0) {
         if (!weeks.has(week)) weeks.set(week, new Map());
         const w = weeks.get(week), e = w.get(pub);
         w.set(pub, { name, value: (e ? e.value : 0) + gain });
+        weekParts.set(key, best);
       }
       for (const d of days.keys()) if (!validDay(d)) days.delete(d);
       for (const w of weeks.keys()) if (!validWeek(w)) weeks.delete(w);
+      for (const k of weekParts.keys()) if (!validDay(Number(k.split(':')[1]))) weekParts.delete(k);
       const all = list(days, day);
       return { rank: all.findIndex(e => e[0] === pub) + 1, players: all.length };
     },
@@ -378,10 +382,14 @@ function redisStore() {
         ['EXPIRE', z, String(DAY_KEEP_S)], ['EXPIRE', n, String(DAY_KEEP_S)],
         ['ZREVRANK', z, pub], ['ZCARD', z]
       ];
-      // The week grows by however much this beat the player's earlier best of the day.
-      const gain = score - (had === null ? 0 : Math.floor(Number(had)));
-      if (gain > 0) cmds.push(['ZINCRBY', wz, String(gain), pub], ['HSET', wn, pub, name], ['EXPIRE', wz, String(WEEK_KEEP_S)], ['EXPIRE', wn, String(WEEK_KEEP_S)]);
+      // The week holds the sum of each day's best: it takes whatever part of this day's best it doesn't have yet,
+      // which also brings in a best set before the week was being counted.
+      const wp = 'pt:wp2:' + weekOf(day), part = pub + ':' + day;
+      cmds.push(['ZSCORE', z, pub], ['HGET', wp, part]);
       const r = await run(cmds);
+      const best = Math.floor(Number(r[6])), gain = best - Number(r[7] || 0);
+      if (gain > 0) await run([['ZINCRBY', wz, String(gain), pub], ['HSET', wn, pub, name], ['HSET', wp, part, String(best)],
+        ['EXPIRE', wz, String(WEEK_KEEP_S)], ['EXPIRE', wn, String(WEEK_KEEP_S)], ['EXPIRE', wp, String(WEEK_KEEP_S)]]);
       return { rank: r[4] + 1, players: r[5] };
     },
     async top(day, me) { return board(keys(day), me); },
