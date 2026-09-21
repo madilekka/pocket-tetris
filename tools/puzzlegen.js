@@ -7,7 +7,8 @@
 //  - drop: the piece is turned and hard-dropped straight from above (chapters 1-3);
 //  - full: the game's real moves in puzzle mode. Pieces don't fall on their own, so the player can
 //    soft-drop, slide sideways and turn (with the game's wall kicks) before the hard drop. That lets
-//    a piece tuck under a ledge, which a straight drop can't reach (chapters 4-5).
+//    a piece tuck under a ledge, which a straight drop can't reach (chapters 4-5). A piece lowered onto
+//    something locks after half a second unless it keeps moving, so the searched paths assume quick input.
 // Both: full rows clear at once, one HOLD per piece, and when the queue runs out the held piece is played last.
 const fs = require('fs');
 const path = require('path');

@@ -1459,8 +1459,8 @@
     if(gameState==='paused'){ pauseInput(BUTTON_PAUSE[action]); return; }
     if(action==='start'){ togglePause(); return; }
     if(game && (gameState==='playing' || gameState==='clearing')){
-      // In puzzles a piece never locks by itself, and players expect DOWN on a piece that can't go lower to place it.
-      // Only a fresh press does that: holding DOWN just lowers the piece, so it can still be slid under a ledge.
+      // A puzzle piece lowered onto something locks after half a second; a fresh DOWN on it places it right away.
+      // Holding DOWN only lowers it, so there is still time to slide it under a ledge.
       var grounded = mode==='puzzle' && game.state==='playing' && game.ghostY()===game.py;
       if(action==='soft' && !repeat && grounded) action='drop';
       game.act(action);

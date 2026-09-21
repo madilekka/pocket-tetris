@@ -34,6 +34,8 @@
   // A grounded piece locks after 15 ticks (0.25 s), and moving or turning it restarts that wait up to 15 times.
   // Gravity can't get harsher past level 18, so from level 20 the wait shrinks by a tick a level, to 9 ticks.
   var LOCK_TICKS=15, MIN_LOCK_TICKS=9, MAX_LOCK_RESETS=15;
+  // In puzzles a piece the player has lowered onto something locks after half a second.
+  var PUZZLE_LOCK_TICKS=30;
   var CLEAR_TICKS=11;
   // Battles speed up every 30 seconds, up to level 15, so a match always ends.
   var BATTLE_LEVEL_TICKS=30*TICKS_PER_SECOND, BATTLE_MAX_LEVEL=15;
@@ -304,18 +306,21 @@
         return;
       }
       if(rules.timeLimitTicks && g.tick>=rules.timeLimitTicks){ end('timeup'); return; }
-      if(rules.puzzle) return;
       if(rules.battle){
         var lv=Math.min(BATTLE_MAX_LEVEL, Math.floor(g.tick/BATTLE_LEVEL_TICKS));
         if(lv>g.level){ g.level=lv; emit({t:'level'}); }
       }
-      g.gravityAcc+=gravityFor(g.level);
-      while(g.gravityAcc>=ROW){
-        g.gravityAcc-=ROW;
-        if(!tryMove(0,1)){ g.gravityAcc=0; break; }
+      // Puzzle pieces don't fall on their own, so the player has time to think; once lowered onto something,
+      // they lock like any other piece, just after a longer wait.
+      if(!rules.puzzle){
+        g.gravityAcc+=gravityFor(g.level);
+        while(g.gravityAcc>=ROW){
+          g.gravityAcc-=ROW;
+          if(!tryMove(0,1)){ g.gravityAcc=0; break; }
+        }
       }
       if(collides(g.piece,g.px,g.py+1)){
-        if(++g.lockTimer>=lockTicksFor(g.level)) lock();
+        if(++g.lockTimer>=(rules.puzzle ? PUZZLE_LOCK_TICKS : lockTicksFor(g.level))) lock();
       } else {
         g.lockTimer=0;
       }
